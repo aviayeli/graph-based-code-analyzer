@@ -6,8 +6,10 @@ import sys
 from pathlib import Path
 
 from src.config import settings
+from src.differ import GraphDiffer
 from src.exporter import GraphExporter
 from src.fetcher import RepoFetcher
+from src.finops import FinOpsAnalyzer
 from src.graph import GraphBuilder
 from src.mixins import LoggingMixin
 from src.models import GraphMeta
@@ -62,6 +64,17 @@ class Pipeline(LoggingMixin):
         exporter = GraphExporter(result)
         exporter.write_index(_OUTPUT.parent / "index.md")
         exporter.write_hot(_OUTPUT.parent / "hot.md")
+
+        # ── F: FinOps Benchmark ────────────────────────────────────────────
+        finops = FinOpsAnalyzer(repo_root=_WORKSPACE, graph_path=_OUTPUT)
+        benchmark_results = finops.run_benchmarks()
+        finops.write_report(benchmark_results, Path("docs/finops_report.md"))
+
+        # ── G: Graph Diff (God-node refactoring simulation) ────────────────
+        differ = GraphDiffer(_OUTPUT)
+        diff = differ.compute_diff()
+        differ.write_diff_json(Path("vault/graph_diff.json"), diff)
+        differ.write_report(Path("docs/refactor_report.md"), diff)
 
         self.log.info(
             "=== Pipeline DONE: %d nodes, %d edges ===",

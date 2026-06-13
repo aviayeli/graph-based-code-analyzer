@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "before_sha": "d80719d",
+    "after_sha": "simulated",
+    "generated_at": "2026-06-13T18:48:31.222438+00:00",
+    "description": "Simulated refactoring of top God-nodes"
+  },
+  "node_deltas": [
+    {
+      "node_id": "crewai.crew",
+      "issue": "2,356 LOC, out_degree=51: orchestration + state + checkpoint all entangled",
+      "before": {
+        "in_degree": 17,
+        "out_degree": 51,
+        "loc": 2356,
+        "score": 68
+      },
+      "after": {
+        "in_degree": 17,
+        "out_degree": 15,
+        "loc": 740,
+        "score": 32
+      },
+      "delta": {
+        "in_degree": 0,
+        "out_degree": -36,
+        "loc": -1616,
+        "score": -36
+      }
+    },
+    {
+      "node_id": "crewai.task",
+      "issue": "1,464 LOC, in_degree=40: output handling and guardrails mixed into core",
+      "before": {
+        "in_degree": 40,
+        "out_degree": 21,
+        "loc": 1464,
+        "score": 61
+      },
+      "after": {
+        "in_degree": 15,
+        "out_degree": 21,
+        "loc": 580,
+        "score": 36
+      },
+      "delta": {
+        "in_degree": -25,
+        "out_degree": 0,
+        "loc": -884,
+        "score": -25
+      }
+    }
+  ],
+  "new_nodes": [
+    {
+      "id": "crewai.crew_orchestrator",
+      "extracted_from": "crewai.crew",
+      "description": "Sequential/hierarchical process scheduling",
+      "estimated_in": 22,
+      "estimated_out": 3,
+      "estimated_score": 25
+    },
+    {
+      "id": "crewai.crew_checkpoint",
+      "extracted_from": "crewai.crew",
+      "description": "Fork, restore, snapshot state management",
+      "estimated_in": 14,
+      "estimated_out": 3,
+      "estimated_score": 17
+    },
+    {
+      "id": "crewai.task_output_handler",
+      "extracted_from": "crewai.task",
+      "description": "TaskOutput validation, output_file, guardrail logic",
+      "estimated_in": 25,
+      "estimated_out": 3,
+      "estimated_score": 28
+    }
+  ],
+  "summary": {
+    "nodes_refactored": 2,
+    "new_modules_created": 3,
+    "avg_score_before": 64.5,
+    "avg_score_after": 34.0,
+    "avg_score_reduction": 30.5
+  }
+}

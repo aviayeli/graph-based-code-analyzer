@@ -109,16 +109,11 @@ def test_index_wikilinks_class_names(tmp_path: Path) -> None:
     assert "[[BaseAgent]]" in content
 
 
-def test_index_nav_links_hot(tmp_path: Path) -> None:
+def test_index_nav_links(tmp_path: Path) -> None:
     out = tmp_path / "index.md"
     _exp().write_index(out)
-    assert "[[hot]]" in out.read_text()
-
-
-def test_index_nav_links_self(tmp_path: Path) -> None:
-    out = tmp_path / "index.md"
-    _exp().write_index(out)
-    assert "[[index]]" in out.read_text()
+    content = out.read_text()
+    assert "[[hot]]" in content and "[[index]]" in content
 
 
 def test_index_grouped_by_domain(tmp_path: Path) -> None:
