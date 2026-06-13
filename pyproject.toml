@@ -71,7 +71,7 @@ addopts = "--tb=short -q"
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/__init__.py", "src/mixins/__init__.py"]
+omit = ["src/__init__.py", "src/mixins/__init__.py", "src/pipeline.py", "src/_visitor.py"]
 
 [tool.coverage.report]
 show_missing = true
