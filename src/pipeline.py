@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from src.config import settings
+from src.exporter import GraphExporter
 from src.fetcher import RepoFetcher
 from src.graph import GraphBuilder
 from src.mixins import LoggingMixin
@@ -56,6 +57,12 @@ class Pipeline(LoggingMixin):
             target_url=settings.target_repo_url or _TARGET_URL,
         )
         result = builder.write_json(_OUTPUT, meta)
+
+        # ── E: Obsidian Vault ──────────────────────────────────────────────
+        exporter = GraphExporter(result)
+        exporter.write_index(_OUTPUT.parent / "index.md")
+        exporter.write_hot(_OUTPUT.parent / "hot.md")
+
         self.log.info(
             "=== Pipeline DONE: %d nodes, %d edges ===",
             meta.total_nodes,
