@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     target_repo_url: str = Field(default="")
     workspace_dir: Path = Field(default=Path("workspace"))
     vault_path: Path = Field(default=Path("vault"))
+    docs_dir: Path = Field(default=Path("docs"))
+    repo_name: str = Field(default="")
+    repo_src_subdir: str = Field(default="lib/crewai/src")
+    repo_pkg_name: str = Field(default="crewai")
 
     # ── Parser ───────────────────────────────────────────────────────────────
     supported_languages: list[str] = Field(default=["python"])
@@ -64,7 +68,7 @@ class Settings(BaseSettings):
         default="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
     )
 
-    @field_validator("workspace_dir", "vault_path", "checkpoint_dir", mode="before")
+    @field_validator("workspace_dir", "vault_path", "checkpoint_dir", "docs_dir", mode="before")
     @classmethod
     def _coerce_path(cls, v: object) -> Path:
         return Path(str(v))

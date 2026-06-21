@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import sys
-from pathlib import Path
 
 from src.config import settings
 from src.differ import GraphDiffer
@@ -15,11 +14,6 @@ from src.mixins import LoggingMixin
 from src.models import GraphMeta
 from src.parser import ASTParser
 
-# Paths are relative to the project root (where the command is invoked).
-_SRC_ROOT = settings.workspace_dir / "lib/crewai/src"
-_CREWAI_PKG = _SRC_ROOT / "crewai"
-_OUTPUT = Path("vault/graph.json")
-
 
 class Pipeline(LoggingMixin):
     """Orchestrates Fetch → Parse → Build → Export."""
@@ -30,14 +24,18 @@ class Pipeline(LoggingMixin):
         )
         self.log.info("=== Graphify Pipeline START ===")
 
+        src_root = settings.workspace_dir / settings.repo_src_subdir
+        pkg_root = src_root / settings.repo_pkg_name
+        graph_out = settings.vault_path / "graph.json"
+
         # ── A: Fetch ───────────────────────────────────────────────────────
-        fetcher = RepoFetcher(_CREWAI_PKG)
+        fetcher = RepoFetcher(pkg_root)
         files = fetcher.collect_files()
         sha = fetcher.get_sha()
         self.log.info("SHA: %s | files: %d", sha, len(files))
 
         # ── B: Parse ───────────────────────────────────────────────────────
-        parser = ASTParser(src_root=_SRC_ROOT, repo_root=settings.workspace_dir)
+        parser = ASTParser(src_root=src_root, repo_root=settings.workspace_dir)
         nodes, edges = parser.parse_files(files, log_interval=100)
         self.log.info("Parsed: nodes=%d edges=%d", len(nodes), len(edges))
 
@@ -51,27 +49,27 @@ class Pipeline(LoggingMixin):
 
         # ── D: Export ──────────────────────────────────────────────────────
         meta = GraphMeta(
-            repo="crewAI",
+            repo=settings.repo_name or settings.target_repo_url.rstrip("/").split("/")[-1],
             sha=sha,
             target_url=settings.target_repo_url,
         )
-        result = builder.write_json(_OUTPUT, meta)
+        result = builder.write_json(graph_out, meta)
 
         # ── E: Obsidian Vault ──────────────────────────────────────────────
         exporter = GraphExporter(result)
-        exporter.write_index(_OUTPUT.parent / "index.md")
-        exporter.write_hot(_OUTPUT.parent / "hot.md")
+        exporter.write_index(settings.vault_path / "index.md")
+        exporter.write_hot(settings.vault_path / "hot.md")
 
         # ── F: FinOps Benchmark ────────────────────────────────────────────
-        finops = FinOpsAnalyzer(repo_root=settings.workspace_dir, graph_path=_OUTPUT)
+        finops = FinOpsAnalyzer(repo_root=settings.workspace_dir, graph_path=graph_out)
         benchmark_results = finops.run_benchmarks()
-        finops.write_report(benchmark_results, Path("docs/finops_report.md"))
+        finops.write_report(benchmark_results, settings.docs_dir / "finops_report.md")
 
         # ── G: Graph Diff (God-node refactoring simulation) ────────────────
-        differ = GraphDiffer(_OUTPUT)
+        differ = GraphDiffer(graph_out)
         diff = differ.compute_diff()
-        differ.write_diff_json(Path("vault/graph_diff.json"), diff)
-        differ.write_report(Path("docs/refactor_report.md"), diff)
+        differ.write_diff_json(settings.vault_path / "graph_diff.json", diff)
+        differ.write_report(settings.docs_dir / "refactor_report.md", diff)
 
         self.log.info(
             "=== Pipeline DONE: %d nodes, %d edges ===",
