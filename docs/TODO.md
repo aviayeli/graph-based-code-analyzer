@@ -72,6 +72,22 @@
 
 ---
 
+## Phase 6.5 — EX04 Agentic Security Workflow + Pipeline QA ✅
+- [x] Implemented `src/agents.py` — CrewAI agent definitions: `security_auditor`, `implementation_engineer`, `qa_verifier`
+- [x] Implemented `src/vuln03_crew.py` — 3-agent sequential CrewAI pipeline for CWE-78 VULN-03 remediation
+  - [x] `Security_Auditor` agent: locates `helperCommand` CWE-78 sink in `bootstrap/state.ts`, CVSS scoring, community impact
+  - [x] `Implementation_Engineer` agent: generates `PreToolUse` hook (shell-metachar rejection) + `spawn()` refactor with `shell:false`
+  - [x] `QA_Verifier` agent: adversarial validation of 5 payloads; writes `security_signoff_report.md` via `output_file`
+- [x] `security_signoff_report.md` generated autonomously (VULN-03 status: RESOLVED)
+- [x] Added `tests/integration/test_pipeline.py` — end-to-end integration tests against minimal 3-file fixture repo
+  - [x] `test_parse_build_export`: fetcher → parser → builder → `graph.json` round-trip
+  - [x] `test_pipeline_run_end_to_end`: full `Pipeline().run()` with monkeypatched settings; asserts `graph.json`, `index.md`, `hot.md`, `finops_report.md`, `refactor_report.md`
+- [x] V3 pipeline refactor: replaced hardcoded URLs/LLM model/index paths with `pydantic-settings` dynamic fields
+- [x] Strict ruff compliance enforced (`--select ALL`, `E501` line-length, `ANN` annotations)
+- [x] All files ≤ 150 lines; `uv.lock` committed; Python ≥ 3.12 pinned in `pyproject.toml`
+
+---
+
 ## Phase 7 — Bonus B: GitHub Actions CI/CD ⬜ *(pending)*
 - [ ] Create `.github/workflows/graphify.yml`
   - [ ] Trigger: push to `main`
