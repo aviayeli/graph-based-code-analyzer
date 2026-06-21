@@ -91,6 +91,11 @@ class FinOpsAnalyzer(LoggingMixin, TokenBudgetMixin):
         self._queries: list[dict[str, Any]] = json.loads(
             Path(settings.finops_queries_path).read_text(encoding="utf-8")
         )
+        self.configure_budget(
+            hard_limit_input=settings.token_budget_input,
+            cost_per_m_input=settings.cost_per_m_input_usd,
+            cost_per_m_output=settings.cost_per_m_output_usd,
+        )
 
     def benchmark_query(self, query: dict) -> dict:
         naive = _naive_context(query["naive_files"], self.repo_root)

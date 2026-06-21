@@ -27,9 +27,9 @@ class TokenBudgetMixin:
     :class:`TokenBudgetExceededError` before the LLM call is made.
     """
 
-    # Pricing defaults (USD per 1 M tokens) — overridden by Settings at runtime.
-    _cost_per_m_input: float = 3.00
-    _cost_per_m_output: float = 15.00
+    # Pricing (USD per 1 M tokens) — must be set via configure_budget() at startup.
+    _cost_per_m_input: float = 0.0
+    _cost_per_m_output: float = 0.0
     _hard_limit_input: int = 8_000
 
     def _ensure_budget_state(self) -> None:
