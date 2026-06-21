@@ -7,10 +7,14 @@ from pathlib import Path
 
 import pytest
 
+from src.config import settings as _settings
 from src.fetcher import RepoFetcher
 from src.graph import GraphBuilder
 from src.models import GraphMeta
 from src.parser import ASTParser
+from src.pipeline import Pipeline
+
+_MIN_FILES = 3
 
 
 @pytest.fixture()
@@ -40,7 +44,7 @@ def test_parse_build_export(fixture_repo: Path, tmp_path: Path) -> None:
     pkg = fixture_repo / "mypkg"
     fetcher = RepoFetcher(pkg)
     files = fetcher.collect_files()
-    assert len(files) >= 3  # noqa: PLR2004
+    assert len(files) >= _MIN_FILES
 
     parser = ASTParser(src_root=fixture_repo, repo_root=fixture_repo)
     nodes, edges = parser.parse_files(files)
@@ -58,3 +62,33 @@ def test_parse_build_export(fixture_repo: Path, tmp_path: Path) -> None:
     data = json.loads(out.read_text())
     assert "nodes" in data and len(data["nodes"]) > 0
     assert result is not None
+
+
+def test_pipeline_run_end_to_end(
+    fixture_repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    vault = tmp_path / "vault"
+    docs = tmp_path / "docs"
+    ckpt = tmp_path / ".ckpt"
+    for d in (vault, docs, ckpt):
+        d.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(_settings, "workspace_dir", tmp_path)
+    monkeypatch.setattr(_settings, "repo_src_subdir", ".")
+    monkeypatch.setattr(_settings, "repo_pkg_name", "mypkg")
+    monkeypatch.setattr(_settings, "vault_path", vault)
+    monkeypatch.setattr(_settings, "docs_dir", docs)
+    monkeypatch.setattr(_settings, "checkpoint_dir", ckpt)
+    monkeypatch.setattr(_settings, "repo_name", "mypkg")
+    monkeypatch.setattr(
+        "src.finops.FinOpsAnalyzer.run_benchmarks",
+        lambda self, queries=None: [],
+    )
+
+    Pipeline().run()
+
+    assert (vault / "graph.json").exists()
+    assert (vault / "index.md").exists()
+    assert (vault / "hot.md").exists()
+    assert (docs / "finops_report.md").exists()
+    assert (docs / "refactor_report.md").exists()
