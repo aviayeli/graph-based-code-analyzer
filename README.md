@@ -1,268 +1,253 @@
-# EX04 — הנדסה הפוכה ו-AI אגנטי יעיל בטוקנים
-## ניתוח קוד המקור של Claude Code באמצעות גרפי ידע
+# EX04 — Reverse Engineering & Token-Efficient Agentic AI
+## Knowledge-Graph Analysis of the Claude Code Source Tree
 
-<div dir="rtl">
-
-> **קורס:** בינה מלאכותית גנרטיבית ו-LLMים  
-> **מטלה:** EX04 — Reverse Engineering & Token-Efficient Agentic AI  
-> **תאריך הגשה:** יוני 2026  
-> **כלים:** Python 3.11 · Graphify · Obsidian · NetworkX · TypeScript AST
+> **Course:** Generative AI & Large Language Models  
+> **Assignment:** EX04 — Reverse Engineering & Token-Efficient Agentic AI  
+> **Date:** June 2026  
+> **Stack:** Python 3.11 · Graphify · Obsidian · NetworkX · TypeScript AST
 
 ---
 
-## תוכן עניינים
+## Table of Contents
 
-1. [תיאור המאגר ובחירת הפרויקט](#1-תיאור-המאגר-ובחירת-הפרויקט)
-2. [שאלות מחקר ובעיה](#2-שאלות-מחקר-ובעיה)
-3. [סקירת ארכיטקטורה](#3-סקירת-ארכיטקטורה)
-4. [מתודולוגיה — Graphify ו-Obsidian](#4-מתודולוגיה--graphify-ו-obsidian)
-5. [ממצאים — God Nodes ובקבוקי צוואר](#5-ממצאים--god-nodes-ובקבוקי-צוואר)
-6. [יעילות טוקנים FinOps](#6-יעילות-טוקנים-finops)
-7. [זרימת עבודה אגנטית — CrewAI / LangGraph](#7-זרימת-עבודה-אגנטית--crewai--langgraph)
-8. [אלמנטים ויזואליים](#8-אלמנטים-ויזואליים)
-9. [הוראות התקנה והפעלה](#9-הוראות-התקנה-והפעלה)
-10. [מסקנות](#10-מסקנות)
-
----
-
-## 1. תיאור המאגר ובחירת הפרויקט
-
-### מה הוא Claude Code?
-
-**Claude Code** הוא ממשק שורת הפקודה (CLI) הרשמי של חברת Anthropic לסוכן AI אוטונומי. הוא מאפשר למפתחים לנהל שיחה עם מודל Claude ישירות מהטרמינל — הסוכן קורא ומשנה קבצים, מריץ פקודות Bash, מנהל Git ומייצר Pull Requests ללא התערבות אנושית.
-
-### מדוע בחרנו בפרויקט זה?
-
-בחרנו להנדיס לאחור את קוד המקור של Claude Code מתוך שלוש סיבות עיקריות:
-
-1. **מורכבות אגנטית אמיתית** — Claude Code הוא אחד מהיישומים האגנטיים המורכבים ביותר שנחשפו בפומבי. הוא לא demo — הוא מערכת ייצור עם 1,900 קבצי TypeScript ומעל 2 מיליון מילים.
-
-2. **ארכיטקטורה רב-שכבתית** — הפרויקט כולל מנגנוני אבטחה ספקולטיביים, ניהול זיכרון אוטונומי, תזמון ברקע, ו-Persona mode נסתרת — רכיבים שנדיר למצוא יחד בקוד פתוח.
-
-3. **אתגר ה-FinOps** — 2 מיליון מילים הם גבול בלתי-עביר לכל LLM בגישה ישירה. הפרויקט הזה הוא הוכחת-מושג אמיתית לצורך בניווט גרפי.
-
-### היקף הפרויקט
-
-| מדד | ערך |
-|-----|-----|
-| שפת תכנות | TypeScript (`ts` / `tsx`) |
-| מספר קבצים | **1,900** |
-| היקף קוד | **~2,002,597 מילים** (~2.5M טוקנים) |
-| צמתי גרף | **15,906** (פונקציות, טיפוסים, קבצים, מחלקות) |
-| קשתות גרף | **57,097** (imports, calls, contains) |
-| קהילות שזוהו | **311** (20 מהן נקראו בשם) |
-| God Nodes | **10** (degree ≥ 196) |
-| תת-מערכות נסתרות | **5** (KAIROS · autoDream · undercover · buddy · bashSecurity) |
-| טוקנים שנצרכו בחילוץ | **0** (AST דטרמיניסטי בלבד) |
-
-### תוצרי הפרויקט
-
-| קובץ | תיאור |
-|------|-------|
-| `claude-code/src/graphify-out/graph.json` | גרף ידע גולמי (15,906 צמתים, 57,097 קשתות) |
-| `claude-code/src/graphify-out/index.md` | מפת ניווט מאקרו — 20 קהילות, wikilinks |
-| `claude-code/src/graphify-out/hot.md` | מפת חום — 10 God Nodes + 5 תת-מערכות נסתרות |
-| `claude-code/src/graphify-out/GRAPH_REPORT.md` | ניתוח ארכיטקטורי מקיף |
-| `claude-code/src/graphify-out/graph.html` | ויזואליזציה אינטראקטיבית (תצוגת קהילות) |
+1. [Repository Description](#1-repository-description)
+2. [Research Questions & Problem Statement](#2-research-questions--problem-statement)
+3. [Architecture Overview](#3-architecture-overview)
+4. [Methodology — Graphify & Obsidian](#4-methodology--graphify--obsidian)
+5. [Findings — God Nodes & Bottlenecks](#5-findings--god-nodes--bottlenecks)
+6. [Token Efficiency — FinOps](#6-token-efficiency--finops)
+7. [Agent Workflow — CrewAI / LangGraph](#7-agent-workflow--crewai--langgraph)
+8. [Visual Elements](#8-visual-elements)
+9. [Setup & Run Instructions](#9-setup--run-instructions)
+10. [Conclusions](#10-conclusions)
 
 ---
 
-## 2. שאלות מחקר ובעיה
+## 1. Repository Description
 
-### הבעיה המרכזית: "Lost in the Middle"
+### What is Claude Code?
 
-מחקר של Stanford מ-2023 הראה שמודלי שפה מאבדים מידע מהחלקים **האמצעיים** של פרומפטים ארוכים — תופעה המכונה **"Lost in the Middle"**. בפרויקט כמו Claude Code, הבעיה חמורה בצורה קיצונית:
+**Claude Code** is Anthropic's official CLI agent for autonomous software engineering. It lets developers converse with Claude directly from the terminal — reading and writing files, running Bash commands, managing Git, opening pull requests, and executing multi-step engineering tasks without human intervention between steps.
 
-```
-גישה נאיבית:
-  1,900 קבצים × ~1,050 טוקנים ≈ 2,000,000 טוקנים
-  → 6–10 קריאות API נפרדות
-  → עלות: ~$6.00 לניתוח אחד
-  → Lost in the Middle: המודל מחמיץ קשרים בין קהילות
-  → תשובות שגויות על ארכיטקטורה
+### Why We Chose This Codebase
 
-גישת גרף:
-  index.md + hot.md + שאילתה ממוקדת ≈ 12,000 טוקנים
-  → עלות: ~$0.04 לניתוח
-  → חיסכון: 99.4%
-  → ניווט מדויק ממאקרו למיקרו
-```
+We chose to reverse-engineer the Claude Code source tree for three reasons:
 
-### שאלות המחקר
+1. **Real production agentic architecture.** Claude Code is not a demo or tutorial project — it is a deployed, production-grade agentic system with 1,900 TypeScript files and over two million words of source code. It exposes the full complexity of a real AI agent: permission negotiation, speculative safety checks, autonomous background tasks, memory consolidation, and remote/local mode switching.
 
-**ש1 — God Nodes:** כיצד מזהים פונקציות שעצם שינוי שמן ישבור 1,177 מודולים בו-זמנית — מבלי לקרוא שורת קוד אחת?
+2. **Undocumented subsystems.** A directory listing reveals nothing about KAIROS (autonomous scheduling), autoDream (background memory extraction), undercover mode (stealth/whitelabel), buddy (an ASCII companion sprite with RPG mechanics), or the speculative bash security classifier. These exist only inside the code graph.
 
-**ש2 — תת-מערכות נסתרות:** אילו תכונות קיימות בקוד הייצור אך אינן מוזכרות בתיעוד הרשמי? (KAIROS, autoDream, undercover, buddy, bashSecurity)
+3. **The FinOps forcing function.** At 2 million words — roughly 2.5 million tokens — this codebase is physically impossible to feed into any current LLM context window in a single call. It is therefore a perfect test case for graph-guided token-efficient navigation.
 
-**ש3 — FinOps:** כיצד מפחיתים צריכת טוקנים ב-99%+ תוך שמירה על עומק ניתוח מלא לפרויקט בהיקף 2M מילים?
+### Deliverables
 
-**ש4 — Cross-Community Coupling:** אילו זוגות מודולים שנראים לא-קשורים מגלים תלות נסתרת כשמנתחים את גרף ה-AST? (דוגמה: `runHeadlessStreaming()` → `createIdleTimeoutManager()`)
+| Artifact | Location | Description |
+|----------|----------|-------------|
+| Knowledge graph | `claude-code/src/graphify-out/graph.json` | 15,906 nodes · 57,097 edges |
+| Interactive viz | `claude-code/src/graphify-out/graph.html` | Community-aggregated browser view |
+| Macro nav hub | `claude-code/src/graphify-out/index.md` | 20 named communities · wikilinks |
+| Bottleneck map | `claude-code/src/graphify-out/hot.md` | 10 God Nodes · 5 hidden subsystems |
+| Arch report | `claude-code/src/graphify-out/GRAPH_REPORT.md` | Full structural analysis |
 
 ---
 
-## 3. סקירת ארכיטקטורה
+## 2. Research Questions & Problem Statement
 
-גרף הידע חשף ארכיטקטורה **תלת-שכבתית** עם singleton גלובלי כנקודת ייחוס מרכזית:
+### The Core Problem: "Lost in the Middle"
 
-```
-╔══════════════════════════════════════════════════════════════════╗
-║  שכבת ממשק משתמש — Presentation Tier                           ║
-║  components/ · screens/ · hooks/ · context/                      ║
-║  ממשק טרמינל Ink/React · מערכת התראות · keybindings             ║
-╚═══════════════════════════╦══════════════════════════════════════╝
-                            ║ imports ↓
-╔═══════════════════════════╩══════════════════════════════════════╗
-║  שכבת הדומיין — Domain Tier                                     ║
-║  tools/        commands/     tasks/       skills/    services/   ║
-║  BashTool      slash cmds    agents       SkillTool  MCP/compact ║
-║  AgentTool     git/commit    swarm        brief      autoDream   ║
-║  FileEdit      config        InProcess    security   PromptSugg. ║
-╚═══════════════════════════╦══════════════════════════════════════╝
-                            ║ imports ↓
-╔═══════════════════════════╩══════════════════════════════════════╗
-║  שכבת תשתית — Infrastructure Tier                               ║
-║  bootstrap/state.ts  ← Singleton גלובלי (~1,600 שורות, ~50 API) ║
-║  utils/              ← debug · log · config · fs · git · env    ║
-║  services/analytics/ ← GrowthBook · logEvent · OTel telemetry   ║
-║  utils/permissions/  ← filesystem · yoloClassifier · sandbox    ║
-╚══════════════════════════════════════════════════════════════════╝
-```
-
-### `bootstrap/state.ts` — הקובץ הכי חשוב בפרויקט
-
-קובץ יחיד בן ~1,600 שורות שמייצא ~50 state accessors. **כל מודול אחר** בפרויקט מייבא ממנו. הוא גם מכיל את נקודת הכניסה לתכונת KAIROS (שורה 1085) — תת-מערכת לתזמון אוטונומי שלא מוזכרת בתיעוד הרשמי.
-
-### זרימת בקשת משתמש — End to End
+A 2023 Stanford study demonstrated that language models lose information from the **middle** of long prompts — a failure mode called **"Lost in the Middle."** For a codebase the size of Claude Code, the numbers make a naive approach unworkable:
 
 ```
-PromptInput.tsx  →  handlePromptSubmit.ts  →  QueryEngine.ts
-                                                     ↓
-                                              query.ts  →  services/api/claude.ts
-                                                                    ↓
-                                              ┌─────────────────────┤
-                                              ↓                     ↓
-                                   promptCacheBreakDetection    api/errors.ts
-                                              ↓
-                                       toolExecution.ts
-                                    ┌────────┼────────┐
-                                    ↓        ↓        ↓
-                               BashTool  AgentTool  FileEditTool
-                                    ↓        ↓
-                           bashPermissions  runAgent.ts → spawnMultiAgent.ts
-                                    ↓
-                           yoloClassifier (ספקולטיבי)
-                                              ↓
-                                    Messages.tsx / REPL.tsx
+Naive approach:
+  1,900 files × ~1,050 tokens avg = ~2,000,000 tokens
+  → Requires 6–10 separate API calls to cover fully
+  → Estimated cost: ~$6.00 per analysis
+  → Middle sections reliably dropped → wrong architectural answers
+
+Graph-navigation approach:
+  index.md + hot.md + one targeted query = ~12,000 tokens
+  → Single API call, scoped subgraph
+  → Estimated cost: ~$0.04 per analysis
+  → 99.4% token reduction · zero middle-loss
 ```
 
-### ה-20 קהילות המרכזיות
+### Research Questions
 
-| # | קהילה | צמתים | לכידות | קבצים מרכזיים |
-|---|-------|-------|--------|--------------|
-| 0 | Agent UI Editor | 263 | 0.017 | `AgentDetail.tsx`, `AgentEditor.tsx` |
+**RQ1 — God Nodes:** How do we identify functions whose renaming would simultaneously break 1,177 import sites — without reading a single line of source?
+
+**RQ2 — Hidden Subsystems:** Which production features exist in the codebase but appear in no official documentation? (KAIROS, autoDream, undercover, buddy, bash security classifier)
+
+**RQ3 — FinOps at Scale:** How do we reduce token consumption by 99%+ on a 2M-word codebase while preserving full analytical depth and avoiding Lost-in-the-Middle failures?
+
+**RQ4 — Cross-Community Coupling:** Which pairs of modules that appear unrelated reveal hidden structural dependencies when the AST import graph is analysed? (e.g., `runHeadlessStreaming()` → `createIdleTimeoutManager()`)
+
+---
+
+## 3. Architecture Overview
+
+Graph analysis revealed a **three-tier architecture** anchored by a single global singleton:
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║  PRESENTATION TIER                                                   ║
+║  components/  ·  screens/  ·  hooks/  ·  context/                   ║
+║  Ink/React terminal UI · notification system · keybindings           ║
+╚════════════════════════════╦═════════════════════════════════════════╝
+                             ║ imports ↓
+╔════════════════════════════╩═════════════════════════════════════════╗
+║  DOMAIN TIER                                                         ║
+║  tools/       commands/     tasks/       skills/     services/       ║
+║  BashTool     slash cmds    agents       SkillTool   MCP / compact   ║
+║  AgentTool    git / commit  swarm        brief       autoDream       ║
+║  FileEdit     config        InProcess    security    PromptSuggestion ║
+╚════════════════════════════╦═════════════════════════════════════════╝
+                             ║ imports ↓
+╔════════════════════════════╩═════════════════════════════════════════╗
+║  INFRASTRUCTURE TIER                                                 ║
+║  bootstrap/state.ts  ←  global singleton (~1,600 lines, ~50 exports) ║
+║  utils/              ←  debug · log · config · fs · git · env       ║
+║  services/analytics/ ←  GrowthBook · logEvent · OTel telemetry      ║
+║  utils/permissions/  ←  filesystem · yoloClassifier · sandbox       ║
+╚══════════════════════════════════════════════════════════════════════╝
+```
+
+### The Most Important File in the Project
+
+`bootstrap/state.ts` is a single ~1,600-line file that exports approximately 50 state accessors. **Every other module in the project imports from it.** It is simultaneously the God Node host (it contains `getKairosActive()`, `getSessionId()`, `getOriginalCwd()`, `getIsRemoteMode()`, etc.) and the architectural centre of gravity that all three tiers orbit.
+
+### End-to-End Request Flow
+
+```
+PromptInput.tsx
+  → handlePromptSubmit.ts
+  → QueryEngine.ts          [community 84]
+  → query.ts                [community 9]
+  → services/api/claude.ts  [community 34]
+      ├─ promptCacheBreakDetection.ts  [community 17]
+      └─ api/errors.ts                [community 9]
+  → toolExecution.ts        [community 182]
+      ├─ BashTool.tsx    → bashPermissions.ts → yoloClassifier.ts  (speculative)
+      ├─ AgentTool.tsx   → runAgent.ts → spawnMultiAgent.ts
+      └─ FileEditTool.ts → FileWriteTool.ts
+  → Messages.tsx / REPL.tsx
+```
+
+### Top 20 Named Communities
+
+| # | Community | Nodes | Cohesion | Key Files |
+|---|-----------|-------|----------|-----------|
+| 0 | Agent UI Editor | 263 | 0.017 | `AgentDetail.tsx`, `AgentEditor.tsx`, `keybindings/` |
 | 1 | Core State & Session | 259 | 0.021 | `bootstrap/state.ts`, `sessionStorage.ts` |
 | 2 | UI Components & Bridge | 249 | 0.018 | `AgentsMenu.tsx`, `bridge/` |
-| 3 | Agent Tool Core | 242 | 0.021 | `AgentTool.tsx`, `runAgent.ts` |
-| 4 | Agent Dispatch & Prompts | 203 | 0.023 | `prompt.ts`, `builtinAgents.ts` |
+| 3 | Agent Tool Core | 242 | 0.021 | `AgentTool.tsx`, `AgentSummary.ts`, `runAgent.ts` |
+| 4 | Agent Dispatch & Prompts | 203 | 0.023 | `prompt.ts`, `builtinAgents.ts`, `forkSubagent.ts` |
 | 5 | Bash Command Parsing | 195 | 0.022 | `bash/commands.ts`, `bash/ast.ts` |
-| 6 | Analytics & Admin API | 181 | 0.028 | `api/adminRequests.ts` |
-| 7 | Claude API & Bootstrap | 171 | 0.020 | `api/claude.ts`, `REPL.tsx` |
+| 6 | Analytics & Admin API | 181 | 0.028 | `api/adminRequests.ts`, `analytics/growthbook.ts` |
+| 7 | Claude API & Bootstrap | 171 | 0.020 | `api/claude.ts`, `screens/REPL.tsx` |
 | 8 | Tool Execution & Diff | 168 | 0.026 | `FileEditTool.ts`, `FileWriteTool.ts` |
 | 9 | API Error Handling | 163 | 0.023 | `api/errors.ts`, `utils/messages.ts` |
-| 10 | Feature Flags & Billing | 162 | 0.029 | `analytics/growthbook.ts` |
+| 10 | Feature Flags & Billing | 162 | 0.029 | `analytics/growthbook.ts`, `api/overageCreditGrant.ts` |
 | 11 | Settings & Config | 160 | 0.030 | `utils/settings/settings.ts` |
 | 12 | First-Party Analytics | 158 | 0.031 | `analytics/firstPartyEventLoggingExporter.ts` |
 | 13 | Plan Mode & Hooks | 155 | 0.022 | `hooks/asyncHookRegistry.ts` |
 | 14 | Bridge Status UI | 154 | 0.025 | `bridge/bridgeStatusUtil.ts` |
 | 15 | Bash Permissions & Safety | 153 | 0.028 | `tools/BashTool/bashPermissions.ts` |
-| 16 | Stats & Icon Components | 151 | 0.024 | `components/FastIcon.tsx` |
+| 16 | Stats & Icon Components | 151 | 0.024 | `components/FastIcon.tsx`, `components/Stats.tsx` |
 | 17 | Prompt Cache Detection | 149 | 0.032 | `api/promptCacheBreakDetection.ts` |
 | 18 | Task List Hooks | 141 | 0.028 | `hooks/useTaskListWatcher.ts` |
 | 19 | Agent Loading & Feature Flags | 141 | 0.031 | `tools/AgentTool/loadAgentsDir.ts` |
 
+> Communities 20–310 are thin clusters (<130 nodes) representing isolated feature modules and utility namespaces.
+
+**Cohesion interpretation:** Low cohesion (<0.022) signals an integration hub — many diverse modules converge on the same utility. High cohesion (>0.030) signals a self-contained subsystem extractable as an independent package.
+
 ---
 
-## 4. מתודולוגיה — Graphify ו-Obsidian
+## 4. Methodology — Graphify & Obsidian
 
-### שלב א׳ — חילוץ AST דטרמיניסטי (0 טוקנים)
+### Step A — Deterministic AST Extraction (0 tokens, 0 cost)
 
-הצעד הראשון היה הפעלת **Graphify** על 1,900 קבצי TypeScript. ניתוח AST הוא תהליך דטרמיניסטי לחלוטין — ללא LLM, ללא עלות טוקנים:
+The first step was running **Graphify** across all 1,900 TypeScript files using pure AST analysis — no LLM, no API calls, no token cost:
 
 ```bash
-# הרצת graphify על src/ של Claude Code
 /graphify ./claude-code/src
 
-# תוצאה:
-# ✓ AST: 15,912 nodes, 67,128 edges  (0 tokens)
-# ✓ Merged: 15,906 nodes, 57,097 edges
-# ✓ 311 communities detected (Louvain)
-# ✓ 10 God Nodes identified
+# Output:
+# AST extraction: 1900/1900 files (100%) [8 workers]
+# AST: 15,912 nodes, 67,128 edges
+# Merged: 15,906 nodes, 57,097 edges
+# Graph: 15,906 nodes, 57,097 edges, 311 communities
+# This run: 0 input tokens, 0 output tokens
 ```
 
-**מה Graphify חילץ מכל קובץ TypeScript:**
-- **צמתים:** פונקציות, מחלקות, ממשקים, טיפוסים, קבצים
-- **קשתות:** `imports`, `calls`, `contains`, `imports_from`
-- **98% EXTRACTED** (מ-AST ישיר) + **2% INFERRED** (הסקה סמנטית עם confidence 0.8)
+From each TypeScript file, Graphify extracted:
+- **Nodes:** functions, classes, interfaces, type aliases, files
+- **Edges:** `imports`, `calls`, `contains`, `imports_from`
+- **98% EXTRACTED** (direct AST parse) + **2% INFERRED** (semantic inference, avg confidence 0.8)
 
-### שלב ב׳ — גילוי קהילות (Community Detection)
+### Step B — Community Detection (Louvain Algorithm)
 
 ```python
-# תהליך גילוי הקהילות (פנימי ב-Graphify)
-G = build_from_json(extraction, root='./claude-code/src', directed=False)
-communities = cluster(G)          # אלגוריתם Louvain
-cohesion    = score_all(G, communities)  # מדידת לכידות תוך-קהילתית
-gods        = god_nodes(G)        # degree ≥ 196 → God Node
-surprises   = surprising_connections(G, communities)  # קשתות בין-קהילתיות
+G           = build_from_json(extraction, root='./claude-code/src', directed=False)
+communities = cluster(G)           # Louvain modularity optimisation
+cohesion    = score_all(G, communities)
+gods        = god_nodes(G)         # degree ≥ 196 → God Node
+surprises   = surprising_connections(G, communities)
 ```
 
-**אלגוריתם Louvain** ממטב את ה-modularity של הגרף — הוא מוצא חלוקה לקהילות כך שהקשתות בתוך קהילה צפופות יותר מהקשתות בין קהילות. לכידות (cohesion) נמוכה מ-0.022 מציינת קהילת-אינטגרציה (hub); מעל 0.030 — מודול עצמאי שניתן לחלץ לחבילה נפרדת.
+Louvain maximises graph modularity — it finds a partition where intra-community edges are denser than inter-community edges. The resulting 311 communities were then **named manually** based on their node labels (top 20) or left as `Community N` (the long tail).
 
-### שלב ג׳ — ניווט מאקרו→מזו→מיקרו ב-Obsidian
+### Step C — Macro → Meso → Micro Navigation in Obsidian
 
-הקבצים שנוצרו נטענו כ-**Obsidian Vault** ומאפשרים ניווט גרפי מלא:
+The three generated Markdown files were loaded as an **Obsidian Vault**, enabling full wikilink graph navigation:
 
 ```
-index.md                ← נקודת כניסה מאקרו (סטטיסטיקות, 20 קהילות, 5 נסתרות)
-       ↓ wikilink
-[[Core State & Session]] ← רמת קהילה (259 צמתים, קבצים מרכזיים, תיאור)
-       ↓ wikilink
-[[hot#KAIROS]]           ← רמת מיקרו (פונקציה, 24 חיבורים, קוד מקורי)
-       ↓ graphify explain
-getKairosActive()        ← עומק מלא + נתיב ל-autoDream (1 hop)
+index.md                   ← macro: 20 communities, graph stats, 5 hidden features
+    ↓  [[Core State & Session]]
+GRAPH_REPORT.md            ← meso: full community table, cohesion, data-flow diagram
+    ↓  [[hot#KAIROS]]
+hot.md                     ← micro: every God Node + every hidden subsystem in depth
+    ↓  graphify explain
+getKairosActive()          ← atomic: 24 connections, source location, community ID
 ```
 
-> **[הוספת צילום מסך Obsidian Graph View כאן]**  
-> *פתחו את `claude-code/src/graphify-out/` כ-Vault, עברו ל-Graph View (Ctrl+G), ותראו את הרשת עם `index.md` ו-`hot.md` כ-hub nodes מרכזיים.*
+**[Insert Obsidian Graph View Screenshot Here]**  
+*Open `claude-code/src/graphify-out/` as a Vault → Ctrl+G → Graph View. The `index.md` and `hot.md` nodes appear as hubs with the most outgoing wikilinks.*
 
-### שלב ד׳ — שאילתות גרף ממוקדות
+### Step D — Targeted Graph Queries
+
+Instead of reading raw source, every architectural question was answered with a graph query:
 
 ```bash
-# שאילתת BFS (הקשר רחב)
+# BFS traversal (broad context, depth 2)
 graphify query "KAIROS autoDream undercover buddy bashSecurity"
-# → 706 צמתים, 0 טוקנים
+# → 706 nodes returned, 0 tokens
 
-# נתיב קצר ביותר בין שני מושגים
+# Shortest path between two concepts
 graphify path "autoDream" "KAIROS"
-# → autoDream.ts --imports--> getKairosActive()  (1 hop בלבד!)
+# → autoDream.ts --imports--> getKairosActive()   (1 hop)
 
-# הסבר מעמיק של צומת
+# Deep explanation of a single node
 graphify explain "autoDream"
-# → 56 חיבורים, קהילה 129, כל תלויות הייבוא
+# → 56 connections, community 129, full import list
 
-# שאילתת DFS (עיקוב נתיב ספציפי)
+# DFS traversal (trace a specific execution path)
 graphify query "speculative classifier yolo bash approval" --dfs
+
+# Token-budgeted query (Rule R1: ≤ 8,000 tokens)
+graphify query "KAIROS state machine lifecycle" --budget 1500
 ```
 
 ---
 
-## 5. ממצאים — God Nodes ובקבוקי צוואר
+## 5. Findings — God Nodes & Bottlenecks
 
-### 5.1 טבלת God Nodes
+### 5.1 God Node Table
 
-"God Node" הוא כל צומת שה-degree שלו עולה על 196 — כלומר, 196+ מודולים שונים מייבאים אותו ישירות. 10 ה-God Nodes ביחד מהווים **~8% מכלל 57,097 הקשתות**.
+A God Node is any node whose **degree ≥ 196** in the import/call graph — meaning at least 196 distinct modules import it directly. The ten God Nodes below together account for ~4,500 edges, roughly **8% of all 57,097 edges**.
 
-| # | פונקציה | Degree | Betweenness | קובץ מקורי | קהילות מחוברות |
-|---|---------|--------|-------------|------------|----------------|
+| Rank | Function | Degree | Betweenness | Source File | Communities Bridged |
+|------|----------|--------|-------------|-------------|-------------------|
 | 1 | `logForDebugging()` | **1,177** | **0.179** | `utils/debug.ts:L203` | 155+ |
 | 2 | `logError()` | 574 | 0.058 | `utils/log.ts:L158` | 120+ |
 | 3 | `jsonStringify()` | 381 | — | `utils/slowOperations.ts:L180` | — |
@@ -274,402 +259,441 @@ graphify query "speculative classifier yolo bash approval" --dfs
 | 9 | `getCwd()` | 214 | — | `utils/cwd.ts:L26` | — |
 | 10 | `getFeatureValue_CACHED_MAY_BE_STALE()` | 196 | — | `services/analytics/growthbook.ts:L734` | — |
 
-> **[הוספת דיאגרמת רשת של 10 God Nodes כאן]**  
-> *כלי מוצע: `graphify export html` ← פתחו את `graph.html` וסננו לפי degree ≥ 196*
+**[Insert God Node Network Diagram Here]**  
+*Run `graphify export html`, open `graph.html`, filter to degree ≥ 196. The top 10 nodes will appear as hub spokes radiating to every community.*
 
-### 5.2 ניתוח מקרה: `logForDebugging()` — הצומת הכי מסוכן
-
-```
-degree: 1,177  |  betweenness centrality: 0.179
-```
-
-- **17.9% מכלל הנתיבים הקצרים בגרף** עוברים דרכו
-- פונקציית ניפוי שגיאות שמיובאת **ישירות לקוד ייצור** במקום דרך wrapper
-- **24 קשתות INFERRED** ל-`initializeAgentMcpServers()` ו-`addCacheBreakpoints()` — תלות נסתרת
-
-> **סיכון:** שינוי שם, חתימה, או מיקום הפונקציה ידרוש עדכון ידני ב-1,177 מקומות בו-זמנית.
-
-### 5.3 ניתוח מקרה: `getFeatureValue_CACHED_MAY_BE_STALE()` — פשרת latency/עדכניות
-
-שם הפונקציה עצמו הוא **תיעוד in-band** — הסיומת `_CACHED_MAY_BE_STALE` מזהירה כי הערך עלול להיות ישן. **196 אתרי קריאה** משתמשים בה לשליטה על feature flags — כולל ב-`bashPermissions` (אבטחה) ו-`api/overageCreditGrant` (חיוב כספי). ערך ישן בהקשרים אלה עלול לאשר פקודה מסוכנת שהייתה אמורה להיחסם.
-
-### 5.4 חיבורים מפתיעים בין קהילות
-
-| מקור | יעד | קבצי גישור | מדוע מפתיע |
-|------|-----|-----------|------------|
-| `logOTelEvent()` | `getEventLogger()` | `utils/telemetry/events.ts` ↔ `bootstrap/state.ts` | OTel מחווט ישירות ל-bootstrap state |
-| `handleInitializeRequest()` | `setInitJsonSchema()` | `cli/print.ts` ↔ `bootstrap/state.ts` | שכבת CLI מגיעה לאתחול schema |
-| `runHeadless()` | `takeInitialUserMessage()` | `cli/print.ts` ↔ `utils/sessionStart.ts` | headless שולט על תחילת session |
-| `runHeadlessStreaming()` | `createIdleTimeoutManager()` | `cli/print.ts` ↔ `utils/idleTimeout.ts` | streaming runner מייצר lifecycle timeout עצמאי |
-| `runHeadlessStreaming()` | `setPermissionModeChangedListener()` | `cli/print.ts` ↔ `utils/sessionState.ts` | שכבת streaming רושמת האזנה להרשאות ישירות |
-
-### 5.5 חמש התת-מערכות הנסתרות
-
-#### KAIROS — מצב תזמון אוטונומי
+### 5.2 Case Study: `logForDebugging()` — The Most Dangerous Function in the Repo
 
 ```
-bootstrap/state.ts · שורה 1085
-getKairosActive() · setKairosActive() · isKairosCronEnabled()
-קהילה 4 · degree: 24
+degree: 1,177  |  betweenness centrality: 0.179  |  source: utils/debug.ts:L203
 ```
 
-שם מיוונית: "הרגע הנכון". שער גלובלי שמעביר את המערכת ממצב CLI אינטראקטיבי לסוכן-רקע אוטונומי. BashTool, PowerShellTool, autoDream, fastMode ו-BriefTool — כולם בודקים אותו ומשנים את התנהגותם. נתיב קצר ביותר ל-autoDream: **1 hop** בלבד.
+- **17.9% of all shortest paths** in the 15,906-node graph pass through this single function.
+- It is a conditional debug-logging utility gated on the `DEBUG` env var — yet it is imported **directly** by every tool, service, component, hook, and command rather than routed through a service interface.
+- **24 INFERRED edges** connect it to `initializeAgentMcpServers()` and `addCacheBreakpoints()` — hidden call-site relationships not visible from the directory tree.
+- **Risk:** Rename, remove, or change the signature of `logForDebugging()` and you trigger a cascade across 1,177 import sites simultaneously. The correct fix is a re-exported alias before any rename.
 
-#### autoDream — מיצוי זיכרון אוטומטי ברקע
-
-```
-services/autoDream/autoDream.ts · קהילה 129 · degree: 56
-```
-
-כשהסשן סרלאי (ו-KAIROS פעיל), autoDream מפעיל **סוכן-בן (forked agent)** שקורא את הסשן, מחלץ ממנו זיכרונות ערך, וכותב אותם ל-`~/.claude/memories/`. בסשן הבא, `loadMemoryPrompt()` טוען אותם אוטומטית — זוהי מערכת הזיכרון הפעילה, לא רק הפקודה הידנית `/remember`.
+### 5.3 Case Study: `getFeatureValue_CACHED_MAY_BE_STALE()` — A Latency/Freshness Trade-off Baked into the Name
 
 ```
-autoDream.ts → getKairosActive() → isAutoMemoryEnabled()
-             → extractMemories.ts → forkedAgent.ts → paths.ts [memdir/]
-             ← stopHooks.ts  (כיבוי דרך stop hooks)
+degree: 196  |  source: services/analytics/growthbook.ts:L734
 ```
 
-#### undercover — מצב Stealth / Whitelabel
+The function name itself is **in-band documentation** — the suffix `_CACHED_MAY_BE_STALE` warns callers that the returned feature-flag value may be outdated. Yet 196 call sites use it, including in `bashPermissions.ts` (security-critical) and `api/overageCreditGrant.ts` (billing-critical). A stale read in those paths could approve a command that should be blocked, or apply a credit grant that has since been revoked.
+
+The graph makes this risk **measurable and addressable**: add `getFeatureValue_FRESH()` for the security/billing paths, reducing the blast radius of cache staleness from 196 sites to a small, auditable subset.
+
+### 5.4 Surprising Cross-Community Connections
+
+These edges cross community boundaries in ways invisible from directory inspection alone:
+
+| Source | Target | Bridge Files | Why It Matters |
+|--------|--------|--------------|----------------|
+| `logOTelEvent()` | `getEventLogger()` | `utils/telemetry/events.ts` ↔ `bootstrap/state.ts` | OpenTelemetry is wired directly into the bootstrap singleton |
+| `handleInitializeRequest()` | `setInitJsonSchema()` | `cli/print.ts` ↔ `bootstrap/state.ts` | The CLI print layer reaches into schema initialisation |
+| `runHeadless()` | `takeInitialUserMessage()` | `cli/print.ts` ↔ `utils/sessionStart.ts` | Headless mode owns session-start logic (architectural surprise) |
+| `runHeadlessStreaming()` | `createIdleTimeoutManager()` | `cli/print.ts` ↔ `utils/idleTimeout.ts` | Streaming runner creates its own independent timeout lifecycle |
+| `runHeadlessStreaming()` | `setPermissionModeChangedListener()` | `cli/print.ts` ↔ `utils/sessionState.ts` | The streaming layer registers permission listeners directly |
+
+The YOLO classifier connection is the most counterintuitive: `runHeadlessStreaming()` (a CLI output concern) reaches into `utils/permissions/` (a security concern) — violating the tier boundary between Presentation and Infrastructure without any intermediate Domain layer.
+
+### 5.5 Five Hidden Subsystems
+
+#### KAIROS — Autonomous Scheduling Gate
 
 ```
-utils/undercover.ts · קהילה 132 · degree: 15
-isUndercover() · getUndercoverInstructions() · shouldShowUndercoverAutoNotice()
+bootstrap/state.ts · line 1085
+Functions: getKairosActive() · setKairosActive() · isKairosCronEnabled()
+Community: 4 (Agent Dispatch & Prompts)  |  degree of getKairosActive(): 24
 ```
 
-מסתיר את זהות Claude Code מכותרות commit, מפרומפטים, ומגוף PR. מיועד לפריסות ארגוניות שבהן הלקוח מוציא את הכלי תחת שם המותג שלו, או לכלים פנימיים שבהם ייחוס ל-Claude לא רצוי.
+Named after the Greek concept of "the right moment," KAIROS is a global boolean gate that switches Claude Code from interactive CLI mode into an autonomous background-agent mode. When active, BashTool, PowerShellTool, autoDream, fastMode, BriefTool, StatusLine, and UserPromptMessage all modify their behaviour. The graph shortest path to autoDream is **one hop**: `autoDream.ts --imports--> getKairosActive()`.
 
-#### buddy — חיית מחמד ASCII אינטראקטיבית
-
-```
-buddy/ · קהילות 97, 120
-CompanionSprite.tsx · companion.ts · sprites.ts · types.ts
-```
-
-Sprite ASCII מונפש שחי בטרמינל — עם מין, נדירות ונתוני RPG שנוצרים **דטרמיניסטית** לפי User ID. מינים: goose, duck, snail, dragon, axolotl, cactus, mushroom. מנגנון: `hashString(userId)` → `mulberry32()` PRNG → `rollRarity()` → `rollStats()`.
-
-#### bashSecurity — מסווג אבטחה ספקולטיבי
+#### autoDream — Background Memory Consolidation
 
 ```
-tools/BashTool/bashPermissions.ts · קהילה 15
-utils/permissions/yoloClassifier.ts · קהילה 114
+services/autoDream/autoDream.ts  |  community 129  |  degree: 56
+Only caller in the graph: stopHooks.ts
 ```
 
-לפני שהמשתמש מאשר פקודת Bash, המערכת מפעילה בדיקת אבטחה **אסינכרונית** ברקע. כשהמשתמש מאשר — התוצאה כבר מוכנה (latency אפסי):
+When the session idles (and KAIROS is active), autoDream spawns a **forked sub-agent** that reads the current session context, extracts key memories, and writes them to `~/.claude/memories/`. On the next session start, `loadMemoryPrompt()` loads them automatically. This is the live autonomous memory system — not just the manual `/remember` command.
 
 ```
-BashTool מקבל פקודה
-  ↓  executeAsyncClassifierCheck()  ← async, מיידי, ללא await
-  ↓  [המשתמש מחליט בזמן הבדיקה רצה]
-  ↓  awaitClassifierAutoapproval()  ← תוצאה מוכנה, חסימה אפסית
+autoDream.ts
+  → getKairosActive()       (only runs under KAIROS)
+  → isAutoMemoryEnabled()   (behind a GrowthBook feature flag)
+  → extractMemories.ts      (memory extraction service)
+  → forkedAgent.ts          (spawns a background Claude sub-agent)
+  → paths.ts  [memdir/]     (writes to ~/.claude/memories/)
+  ← stopHooks.ts            (lifecycle: shut down via stop hooks)
 ```
 
-השם "yolo" הוא אירוני — זהו דווקא הבודק ה**שמרני** שמחליט אם פקודה עלולה להזיק.
+#### undercover — Stealth / Whitelabel Mode
+
+```
+utils/undercover.ts  |  community 132  |  degree: 15
+Functions: isUndercover() · getUndercoverInstructions() · shouldShowUndercoverAutoNotice()
+```
+
+Hides Claude Code's identity from commit attributions, PR bodies, system prompts, and the prompt input footer. Intended for enterprise deployments where the customer ships the tool under their own brand, or internal tools where Claude attribution in commits is undesirable.
+
+#### buddy — ASCII Companion Sprite with RPG Mechanics
+
+```
+buddy/  |  communities 97 (rendering) and 120 (data model)
+Files: CompanionSprite.tsx · companion.ts · sprites.ts · types.ts · prompt.ts
+```
+
+An animated ASCII pet that lives in the terminal UI. Species include goose, duck, snail, dragon, axolotl, cactus, and mushroom. Each user gets a **deterministically generated companion** via `hashString(userId)` → `mulberry32()` PRNG → `rollRarity()` → `rollStats()`. The companion hides during fullscreen tool runs, reserves terminal columns via `companionReservedColumns()`, and reacts to session events through `usebuddynotification`.
+
+#### bashSecurity — Speculative Pre-Execution Safety Classifier
+
+```
+tools/BashTool/bashPermissions.ts  (community 15)
+utils/permissions/yoloClassifier.ts (community 114)
+```
+
+Before the user approves a Bash command, Claude Code fires an **asynchronous safety check in the background**. By the time the user confirms, the result is already cached — achieving near-zero approval latency:
+
+```
+BashTool receives command
+  │
+  ├─ executeAsyncClassifierCheck()    ← fires immediately, no await
+  │     (running in background while user reads the prompt)
+  │
+  └─ User approves
+        │
+        └─ awaitClassifierAutoapproval()   ← result already ready
+              OR
+           consumeSpeculativeClassifierCheck()  ← destructive pop
+```
+
+The name "yolo" is ironic: the yoloClassifier is the **conservative** safety check that decides whether a command may auto-approve in `--dangerously-skip-permissions` mode. Its result type `YoloClassifierResult` (defined at `types/permissions.ts:L346`) is tracked in bootstrap state via `addToTurnClassifierDuration()`.
+
+### 5.6 Risk Register
+
+| Severity | Node | Risk | Proposed Fix |
+|----------|------|------|-------------|
+| Critical | `logForDebugging()` | Signature change breaks 1,177 sites | Create re-export alias before any rename |
+| High | `bootstrap/state.ts` | >1,600 lines, growing | Extract KAIROS slice → `kairosState.ts` |
+| High | `getFeatureValue_CACHED_MAY_BE_STALE()` | Stale flag in security/billing paths | Add `getFeatureValue_FRESH()` for those call sites |
+| Medium | autoDream forked agent | Token cost not surfaced in session cost tracker | Wire back to `addToTotalCostState()` |
+| Low | `consumeSpeculativeClassifierCheck()` | Destructive consume — second call returns null | Add null-safe wrapper |
 
 ---
 
-## 6. יעילות טוקנים FinOps
+## 6. Token Efficiency — FinOps
 
-### השוואת גישות
+### Approach Comparison
 
-| גישה | טוקנים | עלות (Sonnet) | דיוק |
-|------|--------|--------------|------|
-| קריאת כל הקוד | ~2,000,000 | ~$6.00 | נמוך (Lost in the Middle) |
-| קריאת קובץ בודד ממוקד | ~50,000 | ~$0.15 | בינוני (חסר הקשר) |
-| **ניווט גרפי (index + hot + שאילתה)** | **~12,000** | **~$0.04** | **גבוה** |
+| Approach | Tokens | Cost (Sonnet) | Accuracy |
+|----------|--------|--------------|----------|
+| Read all raw source | ~2,000,000 | ~$6.00 | Low — Lost in the Middle |
+| Read one targeted file | ~50,000 | ~$0.15 | Medium — missing cross-file context |
+| **Graph navigation (index + hot + query)** | **~12,000** | **~$0.04** | **High — scoped subgraph, no middle loss** |
 
-> **חיסכון: 99.4% בטוקנים · 150× זול יותר לשאלה ארכיטקטונית**
+> **Savings: 99.4% fewer tokens · 150× cheaper per architectural question**
 
-### שלוש רמות הניווט
-
-```
-רמה 1 — מאקרו     index.md        ~2,500 טוקנים
-                       ↓
-רמה 2 — מזו       GRAPH_REPORT.md  ~4,000 טוקנים
-                       ↓
-רמה 3 — מיקרו     hot.md           ~5,500 טוקנים
-                                    ───────────────
-         סך הכל:                    ~12,000 טוקנים
-         כיסוי:    95%+ מהידע הארכיטקטוני
-```
-
-### כיצד גרף פותר את "Lost in the Middle"
-
-**1. שאלה נשאלת** → Graphify מריץ BFS/DFS על `graph.json`  
-**2. תת-גרף רלוונטי** (~500–2,000 טוקנים) → נשלח ל-LLM בלבד  
-**3. LLM מקבל רק מה שצריך** → אין "אמצע" שאבד  
-**4. תשובה מדויקת** בעלות נמינלית  
-
-> **[הוספת גרף השוואת עלויות טוקנים כאן]**  
-> *Bar chart: גישה ישירה (2,000,000) לעומת ניווט גרף (12,000)*
-
-### כלל R1 — Hard Token Budgets
-
-בהתאם לכלל R1 המוגדר ב-`CLAUDE.md` של הפרויקט, **כל קריאת LLM חייבת להצהיר על תקציב טוקנים מוערך** לפני הביצוע. תקרת ברירת מחדל: **8,000 טוקנים לקריאה**. ניווט גרפי שומר על כל הקריאות מתחת לתקרה זו.
-
-### בנצ'מרק — שלוש שאילתות ארכיטקטוניות
-
-| שאלה | טוקנים גולמיים | טוקני גרף | חיסכון |
-|------|--------------|-----------|-------|
-| "מהם ה-God Nodes ומה הסיכון שלהם?" | ~800,000 | 5,500 | **99.3%** |
-| "מה עושה autoDream ואיך הוא מחובר ל-KAIROS?" | ~200,000 | 2,000 | **99.0%** |
-| "כיצד bashPermissions מאמת פקודה ספציפית?" | ~150,000 | 1,500 | **99.0%** |
-| **ממוצע** | **~383,000** | **3,000** | **99.2%** |
-
----
-
-## 7. זרימת עבודה אגנטית — CrewAI / LangGraph
-
-> **[Placeholder — יממש בגרסה הבאה של הפרויקט]**
-
-### תרשים הסוכנים המתוכנן
-
-> **[הוספת דיאגרמת CrewAI / LangGraph Agent Workflow כאן]**  
-> *הדיאגרמה תציג 4 סוכנים בזרימת עבודה: GraphNavigator → BottleneckAnalyzer → RefactorPlanner → TokenBudgetGuard*
-
-### תיאור הסוכנים
+### Three Navigation Levels
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  סוכן 1: GraphNavigatorAgent                                │
-│  כלים: graphify query · graphify path · graphify explain    │
-│  תפקיד: קולט שאלה → מריץ שאילתת גרף → מחזיר תת-גרף ממוקד │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────▼──────────────────────────────────┐
-│  סוכן 2: BottleneckAnalyzerAgent                            │
-│  כלים: networkx metrics · degree analysis · betweenness     │
-│  תפקיד: מזהה God Nodes ו-coupling בעייתי → רשימת תיקונים   │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────▼──────────────────────────────────┐
-│  סוכן 3: RefactorPlannerAgent                               │
-│  כלים: GraphDiffer · AST diff generator                     │
-│  תפקיד: מייצר diff מוצע לכל God Node + מעריך עלות טוקנים  │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────▼──────────────────────────────────┐
-│  סוכן 4: TokenBudgetGuardAgent                              │
-│  כלים: token counter · budget enforcer (כלל R1)             │
-│  תפקיד: מוודא ≤ 8,000 טוקנים לכל קריאה · חוסם קריאות יקרות│
-└─────────────────────────────────────────────────────────────┘
+Level 1 — Macro    index.md           ~2,500 tokens
+                       ↓  wikilink
+Level 2 — Meso     GRAPH_REPORT.md    ~4,000 tokens
+                       ↓  wikilink
+Level 3 — Micro    hot.md             ~5,500 tokens
+                                       ──────────────
+           Total:                      ~12,000 tokens
+           Coverage: 95%+ of architectural knowledge
 ```
 
-### תיקוני בקבוקי הצוואר המזוהים
+### How the Graph Eliminates "Lost in the Middle"
 
-| עדיפות | בעיה | פתרון מוצע | צמצום degree משוער |
-|--------|------|-----------|-------------------|
-| קריטי | `logForDebugging()` degree 1,177 | Re-export alias לפני rename | מניעת שבירה מלאה |
-| גבוה | `bootstrap/state.ts` >1,600 שורות | חילוץ KAIROS → `kairosState.ts` | degree −24 |
-| גבוה | `getFeatureValue_CACHED_MAY_BE_STALE()` בנתיבי אבטחה | הוספת `getFeatureValue_FRESH()` | סיכון ≡ 0 |
-| בינוני | autoDream: עלות forked agent לא נרשמת | חיבור ל-session cost tracker | observability |
-| נמוך | `consumeSpeculativeClassifierCheck()` destructive | Null-safe wrapper | יציבות |
+**Step 1:** A question is asked.  
+**Step 2:** Graphify runs BFS/DFS on `graph.json` and returns a scoped subgraph of 500–2,000 tokens.  
+**Step 3:** Only the subgraph is sent to the LLM — there is no long middle to lose.  
+**Step 4:** Accurate, grounded answer at nominal cost.
 
----
+This is the **Karpathy Wiki pattern** applied to FinOps: the graph is the compressed index; the LLM only sees the page it needs.
 
-## 8. אלמנטים ויזואליים
+### Benchmark — Three Architectural Queries
 
-### א. Obsidian Graph View
+| Query | Raw Tokens | Graph Tokens | Savings |
+|-------|-----------|-------------|---------|
+| "What are the God Nodes and what is the risk of each?" | ~800,000 | 5,500 | **99.3%** |
+| "What does autoDream do and how is it connected to KAIROS?" | ~200,000 | 2,000 | **99.0%** |
+| "How does bashPermissions validate a specific command?" | ~150,000 | 1,500 | **99.0%** |
+| **Average** | **~383,000** | **~3,000** | **99.2%** |
 
-> **[הוספת צילום מסך Obsidian Graph View — כל 311 הקהילות — כאן]**  
-> *הוראות: פתחו `claude-code/src/graphify-out/` כ-Vault → Ctrl+G → Graph View*
+### Rule R1 — Hard Token Budgets
 
----
+Per the project's `CLAUDE.md`, every LLM call must declare an estimated token cost before execution. Default ceiling: **8,000 input tokens per call**. Graph navigation keeps every call well under this ceiling; raw file ingestion would blow past it on the first file.
 
-### ב. דיאגרמת God Nodes
-
-> **[הוספת דיאגרמת רשת — 10 God Nodes עם degree ו-betweenness — כאן]**  
-> *כלי: `graphify export html` → פתחו `graph.html` → סננו degree ≥ 196*
-
----
-
-### ג. ארכיטקטורת OOP — שלוש השכבות
-
-> **[הוספת דיאגרמת UML: Infrastructure / Domain / Presentation + bootstrap/state.ts — כאן]**  
-> *כלי מוצע: Mermaid classDiagram*
+**[Insert Token Comparison Bar Chart Here]**  
+*Suggested tool: matplotlib — two bars: "Raw source" (2,000,000) vs "Graph navigation" (12,000), log scale.*
 
 ---
 
-### ד. מפת זרימת נתונים End-to-End
+## 7. Agent Workflow — CrewAI / LangGraph
 
-> **[הוספת flowchart: PromptInput.tsx → REPL.tsx דרך כל שכבות המערכת — כאן]**  
-> *כלי מוצע: Mermaid sequenceDiagram*
+> **[Placeholder — to be implemented in the next phase of this project]**
+
+### Planned Multi-Agent Architecture
+
+**[Insert CrewAI / LangGraph Workflow Diagram Here]**  
+*The diagram will show four agents in a sequential pipeline, each with clearly scoped tools and handoff contracts.*
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  Agent 1: GraphNavigatorAgent                            │
+│  Tools:   graphify query · graphify path · graphify explain│
+│  Role:    Receives an architectural question, runs a     │
+│           targeted graph query, returns a scoped subgraph │
+└─────────────────────┬────────────────────────────────────┘
+                      ↓ scoped subgraph
+┌─────────────────────▼────────────────────────────────────┐
+│  Agent 2: BottleneckAnalyzerAgent                        │
+│  Tools:   NetworkX degree/betweenness · cohesion scorer  │
+│  Role:    Identifies God Nodes and cross-tier coupling;  │
+│           outputs a ranked list of issues with severity  │
+└─────────────────────┬────────────────────────────────────┘
+                      ↓ ranked issue list
+┌─────────────────────▼────────────────────────────────────┐
+│  Agent 3: RefactorPlannerAgent                           │
+│  Tools:   GraphDiffer · AST diff generator               │
+│  Role:    Produces a concrete refactoring diff for each  │
+│           God Node and estimates the token cost savings  │
+└─────────────────────┬────────────────────────────────────┘
+                      ↓ proposed diffs
+┌─────────────────────▼────────────────────────────────────┐
+│  Agent 4: TokenBudgetGuardAgent                          │
+│  Tools:   Token counter · budget enforcer (Rule R1)      │
+│  Role:    Verifies every upstream API call stays         │
+│           ≤ 8,000 tokens; reroutes expensive calls       │
+│           through the graph rather than raw source       │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Bottlenecks Targeted by the Workflow
+
+| Priority | Problem | Proposed Fix | Expected Impact |
+|----------|---------|-------------|----------------|
+| Critical | `logForDebugging()` degree 1,177 | Re-export alias before any rename | Eliminates full-codebase blast radius |
+| High | `bootstrap/state.ts` >1,600 lines | Extract KAIROS → `kairosState.ts` | Reduces degree by 24; enforces R7 (150-line limit) |
+| High | `getFeatureValue_CACHED_MAY_BE_STALE()` in security paths | Add `getFeatureValue_FRESH()` variant | Eliminates stale-flag risk in bashPermissions |
+| Medium | autoDream token cost untracked | Wire forked agent cost to session cost tracker | Full FinOps observability for background tasks |
+| Low | `consumeSpeculativeClassifierCheck()` destructive | Null-safe wrapper | Prevents silent double-consume bugs |
 
 ---
 
-### ה. גרף השוואת טוקנים
+## 8. Visual Elements
 
-> **[הוספת bar chart: גישה ישירה (2,000,000) לעומת ניווט גרף (12,000) — כאן]**  
-> *כלי מוצע: matplotlib / Chart.js*
+### A. Obsidian Graph View
 
----
-
-### ו. תרשים רצף KAIROS → autoDream → זיכרון
-
-> **[הוספת sequence diagram: KAIROS active → autoDream → forkedAgent → ~/.claude/memories/ — כאן]**  
-> *כלי מוצע: Mermaid sequenceDiagram*
+**[Insert Obsidian Graph View Screenshot Here]**  
+*Instructions: open `claude-code/src/graphify-out/` as an Obsidian Vault → Ctrl+G (Graph View). The `index.md` and `hot.md` nodes should appear as the two most-connected hubs. Screenshot the full graph showing all community clusters.*
 
 ---
 
-## 9. הוראות התקנה והפעלה
+### B. God Node Network Diagram
 
-### דרישות מקדימות
+**[Insert God Node Degree Network Diagram Here]**  
+*Instructions: run `graphify export html`, open `graph.html` in a browser, filter nodes to degree ≥ 196. Screenshot the 10 resulting hub nodes with their community connections radiating outward.*
+
+---
+
+### C. OOP Three-Tier Architecture Diagram
+
+**[Insert UML Class / Package Diagram Here]**  
+*Suggested tool: Mermaid `classDiagram` or `graph TD`. Show Infrastructure ← Domain ← Presentation with `bootstrap/state.ts` as the central dependency and the God Nodes annotated on the Infrastructure tier.*
+
+---
+
+### D. End-to-End Data Flow Diagram
+
+**[Insert Sequence / Flowchart Diagram Here]**  
+*Suggested tool: Mermaid `sequenceDiagram`. Participants: User → PromptInput → QueryEngine → claude.ts → toolExecution → [BashTool | AgentTool | FileEditTool] → REPL. Annotate community IDs on each hop.*
+
+---
+
+### E. Token Efficiency Comparison Chart
+
+**[Insert Bar Chart: Raw Source vs Graph Navigation Token Counts Here]**  
+*Suggested tool: matplotlib. X-axis: three queries. Y-axis (log scale): token count. Two bars per query — raw (~800K, ~200K, ~150K) vs graph (~5.5K, ~2K, ~1.5K). Title: "99.2% average token reduction via graph navigation."*
+
+---
+
+### F. KAIROS → autoDream → Memory Sequence Diagram
+
+**[Insert KAIROS / autoDream Lifecycle Sequence Diagram Here]**  
+*Suggested tool: Mermaid `sequenceDiagram`. Participants: Session → bootstrap/state.ts → autoDream.ts → extractMemories.ts → forkedAgent.ts → ~/.claude/memories/ → next Session. Annotate the KAIROS gate at the first conditional.*
+
+---
+
+## 9. Setup & Run Instructions
+
+### Prerequisites
 
 ```bash
-# Python 3.11+
+# Python 3.11 or later
 python3 --version
 
-# uv — מנהל חבילות מהיר
+# uv — fast Python package manager
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Graphify
 uv tool install graphifyy
 
-# אימות התקנה
+# Verify installation
 graphify --version
 ```
 
-### שכפול המאגר
+### Clone & Install
 
 ```bash
 git clone <repository-url>
 cd graph-based-code-analyzer
 
-# התקנת תלויות Python של הפרויקט
+# Install Python project dependencies (pinned in pyproject.toml)
 uv sync
 ```
 
-### הרצת הניתוח מאפס
+### Run the Full Pipeline from Scratch
 
 ```bash
-# שלב 1: הרצת graphify על src/ של Claude Code (0 טוקנים, AST בלבד)
+# Step 1: Build the knowledge graph (pure AST — 0 tokens, 0 cost)
 /graphify ./claude-code/src
 
-# שלב 2: וידוא שהגרף נוצר
+# Verify outputs
 ls -lh claude-code/src/graphify-out/
-# graph.json   (~8MB, 15,906 nodes, 57,097 edges)
-# graph.html   (ויזואליזציה אינטראקטיבית — קהילות מצטברות)
-# GRAPH_REPORT.md
-# index.md
-# hot.md
+# graph.json        ~8 MB  — 15,906 nodes, 57,097 edges
+# graph.html               — interactive community view (open in browser)
+# GRAPH_REPORT.md          — full architectural analysis
+# index.md                 — macro navigation hub
+# hot.md                   — God Nodes + hidden subsystems
 ```
 
-### שאילתות גרף
+### Graph Queries
 
 ```bash
-# שאילתה כללית (BFS depth=2)
+# BFS query — broad context, depth 2
 graphify query "KAIROS autoDream undercover buddy bashSecurity"
 
-# נתיב קצר ביותר בין שני מושגים
+# Shortest path between two concepts
 graphify path "autoDream" "KAIROS"
-# ← autoDream.ts --imports--> getKairosActive()  (1 hop)
+# → autoDream.ts --imports--> getKairosActive()   (1 hop)
 
-# הסבר מעמיק של צומת
+# Deep explanation of a specific node
 graphify explain "autoDream"
 graphify explain "yoloClassifier"
 graphify explain "CompanionSprite"
 
-# שאילתה עם DFS (עיקוב נתיב ספציפי)
+# DFS query — trace a specific execution path
 graphify query "speculative classifier bash approval" --dfs
 
-# הגבלת תקציב טוקנים (כלל R1: ≤8,000)
+# Respect the R1 token budget ceiling
 graphify query "KAIROS state machine lifecycle" --budget 1500
 ```
 
-### פתיחה ב-Obsidian
+### Open in Obsidian
 
 ```
-1. פתחו Obsidian
-2. "Open Folder as Vault" ← בחרו: claude-code/src/graphify-out/
-3. Ctrl+G ← Graph View
-4. התחילו מ-index.md ועקבו אחר wikilinks לקהילות
+1. Open Obsidian
+2. File → Open Folder as Vault → select:  claude-code/src/graphify-out/
+3. Press Ctrl+G to open Graph View
+4. Start from index.md and follow wikilinks into communities
+5. Navigate to [[hot#KAIROS]] to explore the hidden subsystems
 ```
 
-### הרצת בדיקות Python
+### Python Test Suite
 
 ```bash
-# בדיקות יחידה
+# Run unit tests
 uv run pytest tests/ -v
 
-# בדיקת כיסוי (≥80% נדרש)
+# Check coverage (≥ 80% required)
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# בדיקת מגבלת 150 שורות לקובץ (כלל R7)
-find src/ -name "*.py" | xargs wc -l | awk '$1>150{print "FAIL:",$0;f=1}END{exit f}'
+# Enforce 150-line file budget (Rule R7)
+find src/ -name "*.py" | xargs wc -l | awk '$1>150{print "EXCEEDS LIMIT:",$0; f=1} END{exit f}'
+
+# Lint
+uv run ruff check src/ tests/
 ```
 
-### עדכון הגרף לאחר שינויים בקוד
+### Incremental Graph Update
 
 ```bash
-# עדכון מצטבר — רק קבצים שהשתנו (מהיר, 0 טוקנים)
+# Update only changed files (fast, 0 tokens)
 /graphify ./claude-code/src --update
 
-# בנייה מחדש מלאה
+# Full rebuild (clears cache)
 /graphify ./claude-code/src
 ```
 
-### מבנה הפרויקט
+### Project Layout
 
 ```
 graph-based-code-analyzer/
-├── src/                          # Python pipeline
-│   ├── config.py                 # Pydantic settings + env
-│   ├── fetcher.py                # RepoFetcher
-│   ├── parser.py                 # ASTParser (Python AST)
-│   ├── graph.py                  # GraphBuilder (NetworkX)
-│   ├── exporter.py               # GraphExporter (Obsidian MD)
-│   ├── finops.py                 # FinOpsAnalyzer
-│   ├── differ.py                 # GraphDiffer (before/after)
+├── src/                             Python analysis pipeline
+│   ├── config.py                    Pydantic settings + env loading
+│   ├── fetcher.py                   RepoFetcher — file collection
+│   ├── parser.py                    ASTParser — Python AST → RawNode / RawEdge
+│   ├── graph.py                     GraphBuilder — NetworkX + metrics
+│   ├── exporter.py                  GraphExporter — Obsidian Markdown
+│   ├── finops.py                    FinOpsAnalyzer — token benchmarking
+│   ├── differ.py                    GraphDiffer — before/after refactor delta
+│   ├── models.py                    RawNode, RawEdge, GraphMeta dataclasses
+│   ├── pipeline.py                  End-to-end orchestrator
 │   └── mixins/
-│       ├── logging_mixin.py      # Cached-property logger
-│       ├── token_budget_mixin.py # Hard 8K ceiling + tracking
-│       └── checkpoint_mixin.py   # Atomic JSON checkpoints
-├── claude-code/src/              # קוד המקור של Claude Code (read-only)
-│   └── graphify-out/             # פלטי גרף הידע
-│       ├── graph.json            # גרף גולמי (15,906 צמתים)
-│       ├── graph.html            # ויזואליזציה אינטראקטיבית
-│       ├── index.md              # מפת ניווט מאקרו
-│       ├── hot.md                # God Nodes + נסתרות
-│       └── GRAPH_REPORT.md       # ניתוח ארכיטקטורי מקיף
-├── tests/                        # בדיקות יחידה (≥80% כיסוי)
+│       ├── logging_mixin.py         Cached-property logger per class
+│       ├── token_budget_mixin.py    Hard 8K ceiling + cost tracking (Rule R1)
+│       └── checkpoint_mixin.py      Atomic JSON checkpoints (tmp → rename)
+├── claude-code/src/                 Claude Code source (read-only target)
+│   └── graphify-out/                Knowledge graph outputs
+│       ├── graph.json               Raw graph — 15,906 nodes, 57,097 edges
+│       ├── graph.html               Interactive browser visualisation
+│       ├── index.md                 Macro navigation hub (Obsidian Vault entry)
+│       ├── hot.md                   God Nodes + 5 hidden subsystems
+│       └── GRAPH_REPORT.md          Full architectural analysis
+├── tests/                           Unit tests (≥ 80% coverage required)
 ├── docs/
-│   ├── refactor_report.md        # סימולציית refactoring + Mermaid
-│   └── finops_report.md          # בנצ'מרק FinOps מפורט
-├── CLAUDE.md                     # כללי R1–R8 לסוכן AI
-└── pyproject.toml                # תלויות Python עם גרסאות נעוצות
+│   ├── refactor_report.md           God-node refactoring simulation + Mermaid diffs
+│   └── finops_report.md             Token economy benchmark — detailed per-query
+├── CLAUDE.md                        Agent rules R1–R8
+└── pyproject.toml                   Pinned dependencies
 ```
 
 ---
 
-## 10. מסקנות
+## 10. Conclusions
 
-ניתוח קוד המקור של Claude Code באמצעות גרפי ידע הניב שלושה ממצאים מרכזיים:
+Reverse-engineering Claude Code through a knowledge graph yielded three durable findings:
 
-### ממצא א׳ — God Nodes כמדד כמותי לחוב טכני
+### Finding 1 — God Nodes as a Quantitative Technical Debt Metric
 
-`logForDebugging()` עם degree 1,177 ו-betweenness centrality 0.179 הוא **מספר** — לא שיפוט סובייקטיבי. ניתן לזהות God Nodes לפני שגורמים נזק, לתעדף refactoring לפי השפעה מדידה, ולעקוב אחר שיפור אורכי בין גרסאות.
+`logForDebugging()` with degree 1,177 and betweenness centrality 0.179 is not a judgment call — it is a **number**. Graph analysis makes technical debt measurable, prioritisable, and trackable across releases. Teams can now answer "which function has the highest blast radius?" in seconds, not sprint-planning discussions.
 
-### ממצא ב׳ — Code Archaeology — תת-מערכות נסתרות
+### Finding 2 — Code Archaeology Surfaces What Documentation Hides
 
-KAIROS, autoDream, undercover, buddy ו-bashSecurity אינן מוזכרות בתיעוד הרשמי, אך מחוברות בחוזקה לשאר הקוד. ניתוח AST גרפי מגלה אותן תוך דקות — במקום שעות של chasing imports ידני. **הגרף מספר את האמת, לא התיעוד.**
+KAIROS, autoDream, undercover, buddy, and the bash security classifier appear in no changelog, README, or API reference. Yet they are load-bearing production subsystems, tightly wired into the core. AST graph analysis discovered all five in a single zero-cost extraction pass. **The graph tells the truth; the documentation does not have to.**
 
-### ממצא ג׳ — 99.2% חיסכון בטוקנים
+### Finding 3 — 99.2% Token Reduction Enables Architectural Work at Scale
 
-מעבר מ-2,000,000 טוקנים (קריאה גולמית) ל-12,000 טוקנים (ניווט מאקרו→מיקרו) מאפשר ניתוח מעמיק בתוך **תקציב API סביר** — ומונע את "Lost in the Middle" שמייצר תשובות שגויות על ארכיטקטורה. זהו ה-Karpathy Wiki pattern ביישום FinOps אמיתי.
+Moving from 2,000,000 tokens (raw ingestion) to 12,000 tokens (macro→meso→micro graph navigation) makes deep architectural analysis of million-line codebases economically viable and technically accurate. The "Lost in the Middle" failure mode is eliminated by design: the LLM never sees a long middle, only the relevant subgraph.
 
 ---
 
-## קישורים
+## References
 
 - [Graphify (graphifyy)](https://github.com/safishamsi/graphifyy)
 - [Obsidian](https://obsidian.md)
 - [Claude Code — Anthropic](https://claude.ai/code)
-- [Lost in the Middle — Stanford NLP 2023](https://arxiv.org/abs/2307.03172)
-- [Louvain Community Detection](https://arxiv.org/abs/0803.0476)
+- Liu et al., *Lost in the Middle: How Language Models Use Long Contexts*, Stanford NLP, 2023 — https://arxiv.org/abs/2307.03172
+- Blondel et al., *Fast unfolding of communities in large networks* (Louvain), 2008 — https://arxiv.org/abs/0803.0476
 - [NetworkX](https://networkx.org)
 
 ---
 
-*EX04 — Reverse Engineering & Token-Efficient Agentic AI · אוניברסיטת בר-אילן · יוני 2026*  
-*נבנה על פי 4 כללי Karpathy: חשוב לפני שכותב · פשטות תחילה · שינויים כירורגיים · ביצוע מונחה-מטרות*
-
-</div>
+*EX04 — Reverse Engineering & Token-Efficient Agentic AI · June 2026*  
+*Built with Karpathy's 4 Rules: Think Before Coding · Simplicity First · Surgical Changes · Goal-Driven Execution*
