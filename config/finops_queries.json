@@ -1,0 +1,44 @@
+[
+  {
+    "id": "q1",
+    "question": "What is the main execution flow when a Crew is kicked off?",
+    "naive_files": [
+      "lib/crewai/src/crewai/crew.py",
+      "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "lib/crewai/src/crewai/task.py"
+    ],
+    "node_ids": [
+      "crewai.crew",
+      "crewai.agents.crew_agent_executor",
+      "crewai.task"
+    ]
+  },
+  {
+    "id": "q2",
+    "question": "How does Task output propagate between agents in a sequential process?",
+    "naive_files": [
+      "lib/crewai/src/crewai/task.py",
+      "lib/crewai/src/crewai/utilities/agent_utils.py",
+      "lib/crewai/src/crewai/agents/agent_builder/base_agent.py"
+    ],
+    "node_ids": [
+      "crewai.task",
+      "crewai.utilities.agent_utils",
+      "crewai.agents.agent_builder.base_agent"
+    ]
+  },
+  {
+    "id": "q3",
+    "question": "What memory retention patterns does the Agent use for context?",
+    "naive_files": [
+      "lib/crewai/src/crewai/memory/unified_memory.py",
+      "lib/crewai/src/crewai/agent/core.py",
+      "lib/crewai/src/crewai/llms/base_llm.py"
+    ],
+    "node_ids": [
+      "crewai.memory.unified_memory",
+      "crewai.agent.core",
+      "crewai.llms.base_llm"
+    ]
+  }
+]

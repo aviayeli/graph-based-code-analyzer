@@ -1,0 +1,33 @@
+[
+  {
+    "node_id": "crewai.crew",
+    "issue": "2,356 LOC, out_degree=51: orchestration + state + checkpoint all entangled",
+    "extractions": [
+      {
+        "new_id": "crewai.crew_orchestrator",
+        "description": "Sequential/hierarchical process scheduling",
+        "absorbed_out": 22
+      },
+      {
+        "new_id": "crewai.crew_checkpoint",
+        "description": "Fork, restore, snapshot state management",
+        "absorbed_out": 14
+      }
+    ],
+    "after_out_degree": 15,
+    "after_loc": 740
+  },
+  {
+    "node_id": "crewai.task",
+    "issue": "1,464 LOC, in_degree=40: output handling and guardrails mixed into core",
+    "extractions": [
+      {
+        "new_id": "crewai.task_output_handler",
+        "description": "TaskOutput validation, output_file, guardrail logic",
+        "absorbed_in": 25
+      }
+    ],
+    "after_in_degree": 15,
+    "after_loc": 580
+  }
+]

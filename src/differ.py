@@ -5,29 +5,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from src.config import settings
 from src.mixins import LoggingMixin
-
-_PLANS: list[dict] = [
-    {
-        "node_id": "crewai.crew",
-        "issue": "2,356 LOC, out_degree=51: orchestration + state + checkpoint all entangled",
-        "extractions": [
-            {"new_id": "crewai.crew_orchestrator", "description": "Sequential/hierarchical process scheduling", "absorbed_out": 22},
-            {"new_id": "crewai.crew_checkpoint", "description": "Fork, restore, snapshot state management", "absorbed_out": 14},
-        ],
-        "after_out_degree": 15,
-        "after_loc": 740,
-    },
-    {
-        "node_id": "crewai.task",
-        "issue": "1,464 LOC, in_degree=40: output handling and guardrails mixed into core",
-        "extractions": [
-            {"new_id": "crewai.task_output_handler", "description": "TaskOutput validation, output_file, guardrail logic", "absorbed_in": 25},
-        ],
-        "after_in_degree": 15,
-        "after_loc": 580,
-    },
-]
 
 
 def _node_map(graph: dict) -> dict[str, dict]:
@@ -43,7 +22,10 @@ class GraphDiffer(LoggingMixin):
         self._sha: str = self._graph["meta"].get("sha", "unknown")
 
     def compute_diff(self, plans: list[dict] | None = None) -> dict:
-        plans = plans or _PLANS
+        if plans is None:
+            plans = json.loads(
+                Path(settings.refactor_plans_path).read_text(encoding="utf-8")
+            )
         nodes = _node_map(self._graph)
         node_deltas: list[dict] = []
         new_nodes: list[dict] = []

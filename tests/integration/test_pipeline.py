@@ -90,5 +90,6 @@ def test_pipeline_run_end_to_end(
     assert (vault / "graph.json").exists()
     assert (vault / "index.md").exists()
     assert (vault / "hot.md").exists()
+    assert (vault / "graph_diff.json").exists()
     assert (docs / "finops_report.md").exists()
     assert (docs / "refactor_report.md").exists()

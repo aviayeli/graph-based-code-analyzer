@@ -9,41 +9,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from src.config import settings
 from src.mixins import LoggingMixin, TokenBudgetMixin
-
-_CHARS_PER_TOKEN: float = 4.0
-
-_QUERIES: list[dict[str, Any]] = [
-    {
-        "id": "q1",
-        "question": "What is the main execution flow when a Crew is kicked off?",
-        "naive_files": ["lib/crewai/src/crewai/crew.py",
-                        "lib/crewai/src/crewai/agents/crew_agent_executor.py",
-                        "lib/crewai/src/crewai/task.py"],
-        "node_ids": ["crewai.crew", "crewai.agents.crew_agent_executor", "crewai.task"],
-    },
-    {
-        "id": "q2",
-        "question": "How does Task output propagate between agents in a sequential process?",
-        "naive_files": ["lib/crewai/src/crewai/task.py",
-                        "lib/crewai/src/crewai/utilities/agent_utils.py",
-                        "lib/crewai/src/crewai/agents/agent_builder/base_agent.py"],
-        "node_ids": ["crewai.task", "crewai.utilities.agent_utils",
-                     "crewai.agents.agent_builder.base_agent"],
-    },
-    {
-        "id": "q3",
-        "question": "What memory retention patterns does the Agent use for context?",
-        "naive_files": ["lib/crewai/src/crewai/memory/unified_memory.py",
-                        "lib/crewai/src/crewai/agent/core.py",
-                        "lib/crewai/src/crewai/llms/base_llm.py"],
-        "node_ids": ["crewai.memory.unified_memory", "crewai.agent.core", "crewai.llms.base_llm"],
-    },
-]
 
 
 def _tokens(text: str) -> int:
-    return max(1, len(text) // int(_CHARS_PER_TOKEN))
+    return max(1, len(text) // int(settings.chars_per_token))
 
 
 def _naive_context(files: list[str], repo_root: Path) -> str:
@@ -117,6 +88,9 @@ class FinOpsAnalyzer(LoggingMixin, TokenBudgetMixin):
     def __init__(self, repo_root: Path, graph_path: Path) -> None:
         self.repo_root = Path(repo_root)
         self._graph: dict = json.loads(Path(graph_path).read_text(encoding="utf-8"))
+        self._queries: list[dict[str, Any]] = json.loads(
+            Path(settings.finops_queries_path).read_text(encoding="utf-8")
+        )
 
     def benchmark_query(self, query: dict) -> dict:
         naive = _naive_context(query["naive_files"], self.repo_root)
@@ -131,7 +105,7 @@ class FinOpsAnalyzer(LoggingMixin, TokenBudgetMixin):
                 "naive_chars": len(naive), "nav_chars": len(nav)}
 
     def run_benchmarks(self, queries: list[dict] | None = None) -> list[dict]:
-        return [self.benchmark_query(q) for q in (queries or _QUERIES)]
+        return [self.benchmark_query(q) for q in (queries or self._queries)]
 
     def write_report(self, results: list[dict], path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -34,6 +34,9 @@ class Settings(BaseSettings):
         description="Hard ceiling on input tokens per LLM call (Rule R1).",
     )
     token_budget_output: int = Field(default=4096, ge=100)
+    chars_per_token: float = Field(default=4.0, gt=0)
+    finops_queries_path: Path = Field(default=Path("config/finops_queries.json"))
+    refactor_plans_path: Path = Field(default=Path("config/refactor_plans.json"))
 
     # Cost per million tokens in USD (updated from Anthropic pricing page).
     cost_per_m_input_usd: float = Field(default=3.00)
@@ -68,7 +71,11 @@ class Settings(BaseSettings):
         default="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
     )
 
-    @field_validator("workspace_dir", "vault_path", "checkpoint_dir", "docs_dir", mode="before")
+    @field_validator(
+        "workspace_dir", "vault_path", "checkpoint_dir", "docs_dir",
+        "finops_queries_path", "refactor_plans_path",
+        mode="before",
+    )
     @classmethod
     def _coerce_path(cls, v: object) -> Path:
         return Path(str(v))
