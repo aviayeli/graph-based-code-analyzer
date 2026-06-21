@@ -4,7 +4,7 @@
 > **Course:** Generative AI & Large Language Models  
 > **Assignment:** EX04 — Reverse Engineering & Token-Efficient Agentic AI  
 > **Date:** June 2026  
-> **Stack:** Python 3.11 · Graphify · Obsidian · NetworkX · TypeScript AST
+> **Stack:** Python 3.12 · Graphify · Obsidian · NetworkX · TypeScript AST
 
 ---
 
@@ -763,7 +763,7 @@ sequenceDiagram
 ### Prerequisites
 
 ```bash
-# Python 3.11 or later
+# Python 3.12 or later
 python3 --version
 
 # uv — fast Python package manager

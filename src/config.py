@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # ── LLM ──────────────────────────────────────────────────────────────────
     anthropic_api_key: str = Field(default="", repr=False)
     llm_model: str = Field(default="claude-sonnet-4-6")
+    crew_llm_model: str = Field(default="anthropic/claude-haiku-4-5-20251001")
     llm_max_tokens: int = Field(default=8192, ge=1, le=32768)
 
     # ── Token FinOps ─────────────────────────────────────────────────────────

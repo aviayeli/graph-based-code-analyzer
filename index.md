@@ -46,7 +46,7 @@ Entry point: `python -m src.pipeline`
 | `src/differ.py` | `GraphDiffer` — detects high-degree nodes; simulates split; reports delta |
 | `src/vuln03_crew.py` | Autonomous CrewAI workflow that produced the VULN-03 patch |
 
-Mixin utilities live in `src/mixins.py` (logging, token tracking).
+Mixin utilities live in `src/mixins/` (logging, token tracking).
 
 ---
 
