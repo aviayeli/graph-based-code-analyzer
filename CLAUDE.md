@@ -37,9 +37,9 @@ No Python source file in this project may exceed 150 lines. Functionality that w
 Every external library used must appear in `pyproject.toml` with a pinned version range. Transitive-only dependencies must not be imported directly.
 
 ## Conventions
-- Python 3.11+; type hints on all public functions.
+- Python >=3.12; type hints on all public functions.
 - OOP with Mixins for cross-cutting concerns (logging, token tracking, caching).
-- Tests in `tests/`; coverage ≥ 80 % for core modules.
+- Tests in `tests/`; coverage fail_under = 85 for core modules.
 - All graph data flows through `GraphBuilder` → `GraphExporter` → output files.
 - Commit messages: `type(scope): short description` (conventional commits).
 

@@ -16,12 +16,9 @@ from src.models import GraphMeta
 from src.parser import ASTParser
 
 # Paths are relative to the project root (where the command is invoked).
-_WORKSPACE = Path("workspace/crewAI")
-_SRC_ROOT = _WORKSPACE / "lib/crewai/src"
+_SRC_ROOT = settings.workspace_dir / "lib/crewai/src"
 _CREWAI_PKG = _SRC_ROOT / "crewai"
 _OUTPUT = Path("vault/graph.json")
-
-_TARGET_URL = "https://github.com/crewAIInc/crewAI"
 
 
 class Pipeline(LoggingMixin):
@@ -40,7 +37,7 @@ class Pipeline(LoggingMixin):
         self.log.info("SHA: %s | files: %d", sha, len(files))
 
         # ── B: Parse ───────────────────────────────────────────────────────
-        parser = ASTParser(src_root=_SRC_ROOT, repo_root=_WORKSPACE)
+        parser = ASTParser(src_root=_SRC_ROOT, repo_root=settings.workspace_dir)
         nodes, edges = parser.parse_files(files, log_interval=100)
         self.log.info("Parsed: nodes=%d edges=%d", len(nodes), len(edges))
 
@@ -56,7 +53,7 @@ class Pipeline(LoggingMixin):
         meta = GraphMeta(
             repo="crewAI",
             sha=sha,
-            target_url=settings.target_repo_url or _TARGET_URL,
+            target_url=settings.target_repo_url,
         )
         result = builder.write_json(_OUTPUT, meta)
 
@@ -66,7 +63,7 @@ class Pipeline(LoggingMixin):
         exporter.write_hot(_OUTPUT.parent / "hot.md")
 
         # ── F: FinOps Benchmark ────────────────────────────────────────────
-        finops = FinOpsAnalyzer(repo_root=_WORKSPACE, graph_path=_OUTPUT)
+        finops = FinOpsAnalyzer(repo_root=settings.workspace_dir, graph_path=_OUTPUT)
         benchmark_results = finops.run_benchmarks()
         finops.write_report(benchmark_results, Path("docs/finops_report.md"))
 
