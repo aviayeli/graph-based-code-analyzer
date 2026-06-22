@@ -71,7 +71,7 @@ def _report_lines(results: list[dict]) -> list[str]:
     lines += ["", "## Methodology", "",
               "- **Naive**: full source files concatenated for the query.",
               "- **Graph-nav**: node metadata + 1-hop edges from `vault/graph.json`.",
-              "- **Token estimate**: `floor(char_count / 4)` (Anthropic standard).",
+              f"- **Token estimate**: `floor(char_count / {settings.chars_per_token})` (Anthropic standard).",
               "", "## Per-Query Detail", ""]
     for r in results:
         saved = r["naive_tokens"] - r["nav_tokens"]
