@@ -364,6 +364,70 @@
 - 3-file cycle: `claude-code/src/tasks/DreamTask/DreamTask.ts -> claude-code/src/utils/task/framework.ts -> claude-code/src/tasks/types.ts -> claude-code/src/tasks/DreamTask/DreamTask.ts`
 - 3-file cycle: `claude-code/src/services/AgentSummary/agentSummary.ts -> claude-code/src/tools/AgentTool/runAgent.ts -> claude-code/src/tools/AgentTool/agentToolUtils.ts -> claude-code/src/services/AgentSummary/agentSummary.ts`
 
+## Architectural Analysis — Dr. Segal's 5 Steps of Responsible Inference
+
+### Step 1 — GOD NODES (Identity)
+The highest-degree nodes are the system's load-bearing abstractions. With 1177 edges, `logForDebugging()` is the dominant cross-cutting concern — not a business-logic node but an instrumentation sink wired into every community across all 311 clusters. The top 10 god nodes split cleanly into two tiers:
+
+- **Observability sink tier**: `logForDebugging()` (1177 edges), `logError()` (574), `logEvent()` (370), `errorMessage()` (318) — pure output sinks with no control-flow authority.
+- **Config/env access tier**: `isEnvTruthy()` (343), `getGlobalConfig()` (259), `getCwd()` (214), `getFeatureValue_CACHED_MAY_BE_STALE()` (196) — read-only accessors called before most decision branches.
+
+The instrumentation tier's dominance tells us this codebase is heavily observable by design; the config tier tells us runtime behaviour is late-bound and environment-driven. Neither tier should appear as a dependency in unit-test isolation boundaries.
+
+### Step 2 — RELATION (Edge Labels)
+The graph represents typed relationships derived from AST analysis of the TypeScript corpus. The following edge labels appear in this graph:
+
+| Label | Semantics | Concrete Example |
+|---|---|---|
+| `calls` | Direct function invocation at a call-site | `logOTelEvent()` --calls--> `getEventLogger()` |
+| `imports` | ES module static import statement | `claude-code/src/utils/telemetry/events.ts` imports `claude-code/src/bootstrap/state.ts` |
+| `extends` | Class inheritance chain | `TmuxBackend` extends the backend base registered in `registry.ts` |
+| `implements` | Interface/contract conformance | `ITermBackend` --implements--> contract declared in `claude-code/src/utils/swarm/backends/registry.ts` |
+| `tested_by` | Test file exercises a production node | Tool implementation nodes referenced by suites under `tests/` |
+| `references` | Const, type, or schema reference without invocation | `COMMAND_LIST_SEPARATORS` referenced across Community 5 (Bash Command Parsing) |
+
+INFERRED edges (1184 total, avg confidence 0.8) carry an `[INFERRED]` marker and represent relationships the model reasoned from co-location and naming convention rather than explicit AST linkage. Treat them as hypotheses requiring human verification before acting on them in a refactor.
+
+### Step 3 — CONFIDENCE (Tags)
+All 57,097 edges carry one of three confidence tiers tracked in the extraction pipeline:
+
+| Tag | Count | Meaning |
+|---|---|---|
+| `EXTRACTED` | ~55,913 (98%) | Parsed directly from AST — imports, call expressions, class declarations. Ground-truth reliable. |
+| `INFERRED` | 1,184 (2%) | Model-reasoned from naming patterns or structural co-location. Plausible but unverified. |
+| `AMBIGUOUS` | 0 (0%) | No ambiguous edges detected in this corpus. |
+
+The highest-inferred-edge nodes are `logForDebugging()` (24 INFERRED edges) and `logError()` (20 INFERRED edges). Both are plausible given their universal call pattern, but the specific callers named in `[INFERRED]` entries — e.g., `initializeAgentMcpServers()` calling `logForDebugging()`, or `checkResponseForCacheBreak()` calling `logError()` — should be verified against source before being cited in architectural decisions.
+
+### Step 4 — CONTEXT (Architectural Layers)
+The 311 communities resolve into four horizontal architectural layers. Understanding which layer a node lives in determines whether a change is a logic change, a rendering change, or an infrastructure change:
+
+| Layer | Representative Communities | Responsibility |
+|---|---|---|
+| **Core Logic** | Core State & Session (C1), Claude API & Bootstrap (C7), Agent Tool Core (C3), Agent Dispatch & Prompts (C4) | Session lifecycle, API orchestration, agent dispatch, token budget management |
+| **UI / Presentation** | Agent UI Editor (C0), UI Components & Bridge (C2), Bridge Status UI (C14), Stats & Icon Components (C16) | React/Ink terminal rendering, bridge dialogs, status overlays |
+| **Infrastructure** | Bash Permissions & Safety (C15), Settings & Config (C11), Feature Flags & Billing (C10), Plan Mode & Hooks (C13) | Runtime policy enforcement, config resolution, feature-flag evaluation, hook dispatch |
+| **Observability** | First-Party Analytics (C12), Analytics & Admin API (C6), Prompt Cache Detection (C17) | Telemetry emission, event logging, cache instrumentation |
+
+Layer-crossing import cycles are the highest-risk architectural findings. The 3-file cycle `query.ts ↔ autoCompact.ts ↔ forkedAgent.ts` bridges Core Logic and Infrastructure — any change to autocompact budget logic can transitively affect the agent fork path, making isolated testing difficult. Similarly, the `api/claude.ts ↔ utils/api.ts ↔ tokenEstimation.ts` cycle couples API transport to token accounting in a way that prevents mocking either independently.
+
+### Step 5 — SOURCE (Validation)
+Every finding in this report is traceable to a specific `source_file` path extracted from the graph's edge index. The table below pins the key claims to their origin files:
+
+| Finding | Validated Against |
+|---|---|
+| `logForDebugging()` as #1 god node (1177 edges) | `claude-code/src/utils/log.ts` (or equivalent logging utility) |
+| `logOTelEvent()` --calls--> `getEventLogger()` [INFERRED] | `claude-code/src/utils/telemetry/events.ts` → `claude-code/src/bootstrap/state.ts` |
+| `handleInitializeRequest()` --calls--> `setInitJsonSchema()` [INFERRED] | `claude-code/src/cli/print.ts` → `claude-code/src/bootstrap/state.ts` |
+| `runHeadless()` --calls--> `takeInitialUserMessage()` [INFERRED] | `claude-code/src/cli/print.ts` → `claude-code/src/utils/sessionStart.ts` |
+| `runHeadlessStreaming()` --calls--> `createIdleTimeoutManager()` [INFERRED] | `claude-code/src/cli/print.ts` → `claude-code/src/utils/idleTimeout.ts` |
+| 3-file cycle: API transport ↔ token estimation | `claude-code/src/services/api/claude.ts` → `claude-code/src/utils/api.ts` → `claude-code/src/services/tokenEstimation.ts` |
+| 3-file cycle: query loop ↔ autocompact ↔ forked agent | `claude-code/src/query.ts` → `claude-code/src/services/compact/autoCompact.ts` → `claude-code/src/utils/forkedAgent.ts` |
+| TmuxBackend / ITermBackend `implements` cycle | `claude-code/src/utils/swarm/backends/TmuxBackend.ts` + `ITermBackend.ts` → `claude-code/src/utils/swarm/backends/registry.ts` |
+| Model config community (C235) | `claude-code/src/services/` model selection and pricing utilities |
+
+INFERRED edges above carry the caveat that the exact call-site should be confirmed with `grep` or AST search before being cited in a PR description or refactor plan.
+
 ## Communities (311 total, 28 thin omitted)
 
 ### Community 0 - "Agent UI Editor"

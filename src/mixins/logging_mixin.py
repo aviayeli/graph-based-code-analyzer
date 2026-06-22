@@ -3,10 +3,12 @@ from __future__ import annotations
 import logging
 import sys
 from functools import cached_property
-from typing import TYPE_CHECKING
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-if TYPE_CHECKING:
-    pass
+_LOG_FILE = Path("graphify.log")
+_MAX_BYTES = 50 * 1024   # ~50 KB ≈ 500 lines per file
+_BACKUP_COUNT = 20        # FIFO: oldest file evicted when limit reached
 
 
 class LoggingMixin:
@@ -31,13 +33,29 @@ class LoggingMixin:
         self,
         level: str = "INFO",
         fmt: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        log_file: Path = _LOG_FILE,
     ) -> None:
-        """One-shot root logger setup — call once at process entry point."""
-        handler = logging.StreamHandler(sys.stderr)
-        handler.setFormatter(logging.Formatter(fmt))
+        """One-shot root logger setup — call once at process entry point.
+
+        Attaches both a stderr StreamHandler and a RotatingFileHandler so that
+        logs are visible in the terminal and persisted with FIFO rotation.
+        """
+        formatter = logging.Formatter(fmt)
+
+        stream_h = logging.StreamHandler(sys.stderr)
+        stream_h.setFormatter(formatter)
+
+        file_h = RotatingFileHandler(
+            log_file,
+            maxBytes=_MAX_BYTES,
+            backupCount=_BACKUP_COUNT,
+        )
+        file_h.setFormatter(formatter)
+
         root = logging.getLogger()
         if not root.handlers:
-            root.addHandler(handler)
+            root.addHandler(stream_h)
+            root.addHandler(file_h)
         root.setLevel(getattr(logging, level.upper(), logging.INFO))
 
 

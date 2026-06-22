@@ -5,9 +5,9 @@ import sys
 
 
 def main() -> int:
-    from src.pipeline import Pipeline
+    from src.cli import CLIMenu
 
-    Pipeline().run()
+    CLIMenu().start()
     return 0
 
 
