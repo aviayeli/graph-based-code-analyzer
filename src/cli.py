@@ -18,7 +18,11 @@ class CLIMenu(LoggingMixin):
 
     def start(self) -> None:
         """Enter the menu loop. Blocks until the user selects Exit."""
-        self.configure_root_logging(level=settings.log_level, fmt=settings.log_format)
+        self.configure_root_logging(
+            level=settings.log_level,
+            fmt=settings.log_format,
+            log_file=settings.log_file,
+        )
         while True:
             self._print_menu()
             choice = input("Select an option: ").strip()

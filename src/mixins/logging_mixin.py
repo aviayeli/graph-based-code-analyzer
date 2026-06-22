@@ -6,7 +6,8 @@ from functools import cached_property
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-_LOG_FILE = Path("graphify.log")
+from src.config import settings
+
 _MAX_BYTES = 50 * 1024   # ~50 KB ≈ 500 lines per file
 _BACKUP_COUNT = 20        # FIFO: oldest file evicted when limit reached
 
@@ -33,7 +34,7 @@ class LoggingMixin:
         self,
         level: str = "INFO",
         fmt: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        log_file: Path = _LOG_FILE,
+        log_file: Path = settings.log_file,
     ) -> None:
         """One-shot root logger setup — call once at process entry point.
 

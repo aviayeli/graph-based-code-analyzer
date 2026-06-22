@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     )
 
     # ── Logging ──────────────────────────────────────────────────────────────
+    log_file: Path = Field(default=Path("graphify.log"))
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(default="INFO")
     log_format: str = Field(
         default="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
@@ -73,7 +74,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "workspace_dir", "vault_path", "checkpoint_dir", "docs_dir",
-        "finops_queries_path", "refactor_plans_path",
+        "finops_queries_path", "refactor_plans_path", "log_file",
         mode="before",
     )
     @classmethod
