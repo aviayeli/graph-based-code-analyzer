@@ -40,3 +40,6 @@ workspace/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime logs
+*.log

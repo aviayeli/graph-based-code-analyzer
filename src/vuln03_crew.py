@@ -19,11 +19,15 @@ Process: sequential — Security_Auditor → Implementation_Engineer → QA_Veri
 
 from dotenv import load_dotenv
 
-from crewai import Crew, Process, Task
-
-from src.agents import implementation_engineer, qa_verifier, security_auditor
-
 load_dotenv()
+
+from crewai import Crew, Process, Task  # noqa: E402
+
+from src.agents import (  # noqa: E402
+    implementation_engineer,
+    qa_verifier,
+    security_auditor,
+)
 
 # ── Tasks ────────────────────────────────────────────────────────────────────
 

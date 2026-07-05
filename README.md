@@ -885,9 +885,7 @@ graph-based-code-analyzer/
 │       ├── hot.md                   God Nodes + 5 hidden subsystems
 │       └── GRAPH_REPORT.md          Full architectural analysis
 ├── tests/                           Unit tests (≥ 80% coverage required)
-├── docs/
-│   ├── refactor_report.md           God-node refactoring simulation + Mermaid diffs
-│   └── finops_report.md             Token economy benchmark — detailed per-query
+├── docs/                            PRD, PLAN, TODO — project history
 ├── CLAUDE.md                        Agent rules R1–R8
 └── pyproject.toml                   Pinned dependencies
 ```

@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Reverse-engineer large OSS repositories using AST-based graph analysis. Produces Obsidian-ready knowledge artifacts and proves FinOps savings from graph-guided LLM navigation. Primary target: [crewAI](https://github.com/crewAIInc/crewAI).
+Reverse-engineer large OSS repositories using AST-based graph analysis. Produces Obsidian-ready knowledge artifacts and proves FinOps savings from graph-guided LLM navigation. Primary target: the Claude Code source tree (`claude-code/`).
 
 ---
 
@@ -90,8 +90,6 @@ Mixin utilities live in `src/mixins/` (logging, token tracking).
 
 - **Recent work / hot context** → [hot.md](hot.md)
 - **PRD & requirements** → [docs/PRD.md](docs/PRD.md)
-- **FinOps analysis** → [docs/finops_report.md](docs/finops_report.md)
-- **Refactor simulation** → [docs/refactor_report.md](docs/refactor_report.md)
 - **Security sign-off** → [security_signoff_report.md](security_signoff_report.md)
 - **Graph browser** → `graphify-out/graph.html`
 - **Graphify commands** → `graphify query "<q>"` · `graphify path "<A>" "<B>"` · `graphify explain "<concept>"`
